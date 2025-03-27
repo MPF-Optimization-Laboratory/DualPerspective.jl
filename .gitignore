@@ -24,3 +24,6 @@ ENV/
 .env
 .env.local
 memory-bank/**
+
+# Documentation
+docs/build/
