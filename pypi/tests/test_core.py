@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from DualPerspective import DPModel, solve, regularize, rand_dp_model
+from DualPerspective import DPModel, solve, regularize, rand_dp_model, version
 
 # Set random seeds for reproducibility
 np.random.seed(42)
@@ -58,3 +58,30 @@ def test_rand_dp_model():
     model = rand_dp_model(m, n)
     assert model.A.shape == (m, n)
     assert model.b.shape == (m,)
+
+def test_execution_stats():
+    """Test that execution statistics are saved after solving."""
+    # Create and solve a model
+    model = rand_dp_model(m, n)
+    solution = solve(model)
+    
+    # Check that execution_stats is now available
+    assert model.execution_stats is not None
+    
+    # Verify some key properties of execution_stats
+    stats = model.execution_stats
+    assert hasattr(stats, 'status')
+    assert hasattr(stats, 'elapsed_time')
+    assert hasattr(stats, 'iter')
+    assert hasattr(stats, 'solution')
+    assert hasattr(stats, 'primal_obj')
+    assert hasattr(stats, 'dual_obj')
+    
+    # Check that the solution in stats matches the returned solution
+    assert np.allclose(np.array(stats.solution), solution)
+
+def test_version():
+    """Test version functionality."""
+    v = version()
+    assert isinstance(v, str)
+    assert len(v) > 0
