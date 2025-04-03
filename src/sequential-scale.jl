@@ -3,7 +3,8 @@
 
 Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
 """
-function value!(kl::DPModel, t; jprods=Int[0], jtprods=Int[0], kwargs...)
+function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) where T
+    t = max(t, eps(T))
     @unpack λ, A = kl
     scale!(kl, t)
     s = solve!(kl; kwargs...)

@@ -188,11 +188,14 @@ function solve!(
         callback(kl, solver, M, stats, tracer, logging, max_time; kwargs...)
     
     # Call the Trunk solver
-    if M === I
-        trunk_stats = SolverCore.solve!(solver, kl; callback=cb, atol=zero(T), rtol=zero(T), max_time=max_time) 
-    else
-        trunk_stats = SolverCore.solve!(solver, kl; M=M, callback=cb, atol=zero(T), rtol=zero(T)) 
-    end
+    trunk_stats = SolverCore.solve!(
+        solver, kl; 
+        M=M, 
+        callback=cb, 
+        atol=zero(T), 
+        rtol=zero(T), 
+        max_time=max_time
+    )
 
     primal_solution = kl.scale .* grad(kl.lse)
     

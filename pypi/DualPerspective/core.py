@@ -7,19 +7,11 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 # Path
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+# ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+ROOT_DIR = "/Users/mpf/Documents/projects/Software/DualPerspective.jl"
 
 # Useful for development: environment variable to install the package from the local directory.
 USE_LOCAL = os.environ.get('DUALPERSPECTIVE_USE_LOCAL', '').lower() in ('true', '1', 'yes')
-
-# def _reinstall_dualperspective():
-#     """Reinstall DualPerspective.jl from the repository."""
-#     jl.seval(f"""
-#         import Pkg
-#         Pkg.rm("DualPerspective")
-#         Pkg.add("DualPerspective")
-#         Pkg.instantiate()
-#         """)
 
 def _initialize_julia():
     """Initialize Julia and load DualPerspective."""
@@ -28,7 +20,7 @@ def _initialize_julia():
             # Use local Julia project
             jl.seval(f"""
                 import Pkg
-                Pkg.develop("{ROOT_DIR}")
+                Pkg.develop(path="{ROOT_DIR}")
                 """)
         else:
             # Use registry version
@@ -61,10 +53,10 @@ class DPModel:
         
         Args:
             A: Matrix of shape (m, n)
-            b: Vector of length m
-            q: Optional prior vector of length n
+            b: m-vector
+            q: Optional prior vector of length n (default: ones(n)/n)
             C: Optional covariance matrix of shape (n, n)
-            c: Optional vector for linear term
+            c: Optional n-vector for linear term (default: ones(n))
             λ: Optional regularization parameter
         """
         # Convert numpy arrays to Julia arrays
@@ -82,6 +74,8 @@ class DPModel:
             kwargs['λ'] = λ
             
         self.model = jl.DPModel(A_jl, b_jl, **kwargs)
+        # Initialize stats to None
+        self.stats = None
 
     @property
     def A(self):
@@ -90,6 +84,16 @@ class DPModel:
     @property
     def b(self):
         return np.array(self.model.b)
+
+    @property
+    def execution_stats(self):
+        """
+        Get the execution statistics from the last solve operation.
+        
+        Returns:
+            The ExecutionStats object from the last solve, or None if solve hasn't been called.
+        """
+        return self.stats
 
     @classmethod
     def from_julia_model(cls, julia_model):
@@ -104,22 +108,37 @@ class DPModel:
         """
         instance = cls.__new__(cls)
         instance.model = julia_model
+        instance.stats = None
         return instance
 
-def solve(model, verbose=False, logging=0):
+def solve(model, atol=1e-6, rtol=1e-6, verbose=False, logging=0):
     """
     Solve the DualPerspective problem using SequentialSolve algorithm.
     
     Args:
         model: DualPerspectiveModel instance
-        verbose: Whether to print root-finding progress information
+        atol: Absolute tolerance
+        rtol: Relative tolerance
+        verbose: Whether to print DualPerspective logging information
         logging: Whether to print DualPerspective logging information
-
     Returns:
         numpy array containing the solution
     """
+    t0 = sum(model.model.q)
     s_model = jl.SequentialSolve()
-    result = jl.solve(model.model, s_model, zverbose=verbose, logging=logging)
+    result = jl.solve(
+        model.model,
+        s_model,
+        t=t0,
+        atol=atol,
+        rtol=rtol,
+        zverbose=verbose,
+        logging=logging
+    )
+    
+    # Save the execution stats to the model
+    model.stats = result
+    
     return np.array(result.solution)
 
 def scale(model, scale_factor):
@@ -156,3 +175,9 @@ def rand_dp_model(m, n, λ=1e-3):
     """
     julia_model = jl.randDPModel(m, n, λ=λ)
     return DPModel.from_julia_model(julia_model)
+
+def version():
+    """
+    Get the version of the DualPerspective package.
+    """
+    return jl.DualPerspective.version()
