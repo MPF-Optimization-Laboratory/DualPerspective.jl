@@ -5,6 +5,7 @@ Compute the dual objective of a Perspectron model with respect to the scaling pa
 """
 function value!(kl::DPModel, t; jprods=Int[0], jtprods=Int[0], kwargs...)
     @unpack λ, A = kl
+    t = max(t, eps(t))
     scale!(kl, t)
     s = solve!(kl; kwargs...)
     
