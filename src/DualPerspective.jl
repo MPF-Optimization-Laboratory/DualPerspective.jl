@@ -11,6 +11,10 @@ using LinearOperators
 using SolverCore
 using Pkg
 
+import Optim
+using Krylov: cg
+using LinearOperators: LinearOperator
+
 export DPModel, SSModel, OTModel, LPModel
 export SSTrunkLS, SequentialSolve, LevelSet, AdaptiveLevelSet
 export solve!, scale!, scale, regularize!, histogram, reset!, update_y0!
