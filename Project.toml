@@ -1,7 +1,7 @@
 name = "DualPerspective"
 uuid = "a1edf54d-33cf-4bd3-8f57-70bdaf668f08"
-authors = ["Michael Friedlander <michael.friedlander@ubc.ca> and contributors"]
-version = "0.1.2"
+authors = ["Michael P. Friedlander <michael.friedlander@ubc.ca> and contributors"]
+version = "0.1.4"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -23,8 +23,8 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 UnicodePlotsExt = "UnicodePlots"
 
 [compat]
-Distances = "0.10.12"
 DataFrames = "1"
+Distances = "0.10.12"
 GLPK = "1.2.1"
 JSOSolvers = "0.12.1"
 JuMP = "1.23.3"

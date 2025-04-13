@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DualPerspective"
-version = "0.1.2"
+version = "0.1.4"
 authors = [
     { name = "Michael P. Friedlander", email = "michael.friedlander@ubc.ca" },
 ]
-description = "Python interface for DualPerspective.jl - A Julia package for solving large-scale KL divergence problems"
+description = "Python interface for DualPerspective.jl - A Julia package for obtaining maximum-entropy solutions to underdetermined linear systems."
 readme = "README.md"
 requires-python = ">=3.7"
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [

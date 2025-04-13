@@ -64,7 +64,7 @@ model = DPModel(A, b)
     name::String = ""
     meta::NLPModelMeta{T, S} = begin
         m = size(A, 1)
-        NLPModelMeta(m, name="Perspectron Model")
+        NLPModelMeta(m, name="Dual Perspective Model")
     end
     counters::Counters = Counters()
 end
@@ -102,6 +102,7 @@ scale(kl::DPModel) = kl.scale
 Set the scaling factor of the Perspectron model.
 """
 function scale!(kl::DPModel{T}, scale::T) where T
+    @assert scale > 0 "Scale must be positive"
     kl.scale = scale
     return kl
 end

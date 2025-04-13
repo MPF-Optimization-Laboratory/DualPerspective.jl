@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3] - 2024-03-27
+
+### Changed
+- Updated to use official Julia registry installation
+- Simplified Python package installation process
+
 ## [0.1.2] - 2024-03-24
 
 ### Changed

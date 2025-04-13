@@ -3,7 +3,7 @@ derivations_files
 .DS_Store
 **/.jupyter_cache/
 /klsolve_files
-
+/docs/build/
 /.quarto/
 .cursor/**
 anim_fps1.gif
@@ -12,6 +12,8 @@ anim_fps1.gif
 __pycache__/
 *.pyc
 dist/
+build/
+pypi/build/
 *.egg-info/
 .pytest_cache/
 .venv/
