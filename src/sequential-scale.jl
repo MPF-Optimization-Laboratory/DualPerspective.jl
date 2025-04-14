@@ -12,26 +12,35 @@ function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs
     # Update product counts
     jprods[1] += neval_jprod(kl)
     jtprods[1] += neval_jtprod(kl)
+
+    #Dual solution
+    y = s.residual/λ
+
+    #Dual objective value
+    f = dObj!(kl, y)
     
     # Compute derivative of value function
-    y = s.residual/λ
-    dv .= -(lseatyc!(kl, y) - log(t[1]))
+    if !isnothing(dv)
+        dv .= -(lseatyc!(kl, y) - log(t[1]))
+    end
 
     #Hessian
-    b = A*grad(kl.lse)
+    if !isnothing(hv)
+        b = A*grad(kl.lse)
 
-    hv!(res, z) = dHess_prod!(kl, z, res)
-    m = size(A,1)
-    H = LinearOperator(Float64, m, m, true, true, hv!)
+        hv!(res, z) = dHess_prod!(kl, z, res)
+        m = size(A,1)
+        H = LinearOperator(Float64, m, m, true, true, hv!)
 
-    ω = cg(H, A*p)
+        ω,_ = cg(H, A*grad(kl.lse))
 
-    hv .= 1/t + b'*ω
+        hv[1,1] = 1/t[1] + b'*ω
+    end
 
     # Set starting point for next iteration
     update_y0!(kl, s.residual/λ)
-    
-    return s
+
+    return f
 end
 
 struct SequentialSolve end
@@ -123,7 +132,7 @@ function solve!(
         rtol=δ*rtol,
         logging=logging
     )
-    t = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton())[1]
+    t = Optim.minimizer(Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton()))[1]
 
     elapsed_time = time() - start_time
 
