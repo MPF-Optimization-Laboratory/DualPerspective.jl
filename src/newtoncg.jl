@@ -156,14 +156,7 @@ function pObj!(kl::DPModel, x)
     # Compute ⟨Ax - b, C⁻¹(Ax - b)⟩
     quadratic_term = dot(mbuf, mbuf2)
 
-    # Compute ⟨c, x⟩
-    linear_term = dot(c, x)
-
-    # Compute KL(x || q)
-    kl_term = sum(xi * log(xi / qi) for (xi, qi) in zip(x, q) if xi > 0)
-
-    # Final objective
-    return (1 / (2 * λ)) * quadratic_term + linear_term + kl_term
+    return (1/(2λ)) * quadratic_term + dot(c, x) + kl_divergence(x, q)
 end
 
 function solve!(

@@ -1,8 +1,8 @@
 using Test
 
-# @testset "test-logsumexp" begin
-#     include("test-logsumexp.jl")
-# end
+@testset "test-logsumexp" begin
+    include("test-logsumexp.jl")
+end
 
 @testset "test-dualperspective-model" begin
     include("test-dualperspective-model.jl")

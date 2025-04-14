@@ -25,6 +25,7 @@ UnicodePlotsExt = "UnicodePlots"
 [compat]
 DataFrames = "1"
 Distances = "0.10.12"
+ForwardDiff = "1.0.1"
 GLPK = "1.2.1"
 JSOSolvers = "0.12.1"
 JuMP = "1.23.3"
@@ -45,6 +46,7 @@ julia = "1"
 [extras]
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
@@ -58,4 +60,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["Test", "Distributions", "MAT", "NPZ", "Random", "Plots", "PlutoLinks", "JuMP", "GLPK", "Distances", "Statistics", "OptimalTransport", "UnicodePlots"]
+test = ["Test", "Distributions", "MAT", "NPZ", "Random", "Plots", "PlutoLinks", "JuMP", "GLPK", "Distances", "Statistics", "OptimalTransport", "UnicodePlots", "ForwardDiff"]
