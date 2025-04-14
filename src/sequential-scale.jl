@@ -3,6 +3,26 @@
 
 Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
 """
+function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) where T
+    t = max(t, eps(T))
+    @unpack λ, A = kl
+    scale!(kl, t)
+    s = solve!(kl; kwargs...)
+    
+    # Update product counts
+    jprods[1] += neval_jprod(kl)
+    jtprods[1] += neval_jtprod(kl)
+    
+    # Compute derivative of value function
+    y = s.residual/λ
+    dv = -(lseatyc!(kl, y) - log(t) - 1)
+    
+    # Set starting point for next iteration
+    update_y0!(kl, s.residual/λ)
+    
+    return dv
+end
+
 function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs...)
     @unpack λ, A = kl
 
@@ -73,7 +93,8 @@ An `ExecutionStats` struct containing:
 """
 function solve!(
     kl::DPModel{T},
-    ::SequentialSolve;
+    ::SequentialSolve,
+    mode;
     t=one(T),
     rtol=1e-6,
     atol=1e-6, 
@@ -102,37 +123,46 @@ function solve!(
 
     # Find optimal t
     start_time = time()
-    # dv!(t) = value!(
-    #     ss.kl, 
-    #     t;
-    #     jprods=jprods,
-    #     jtprods=jtprods,
-    #     atol=δ*atol,
-    #     rtol=δ*rtol,
-    #     logging=logging
-    # )
 
-    #Using root finding
-    # t = Roots.find_zero(
-    #     dv!,
-    #     t;
-    #     tracks=tracker,
-    #     atol=atol,
-    #     rtol=rtol,
-    #     xatol=xatol,
-    #     xrtol=xrtol,
-    #     verbose=zverbose
-    # )
+    if mode==:Bisection
+        dv!(t) = value!(
+            ss.kl, 
+            t;
+            jprods=jprods,
+            jtprods=jtprods,
+            atol=δ*atol,
+            rtol=δ*rtol,
+            logging=logging
+        )
+
+        #Using root finding
+        t = Roots.find_zero(
+            dv!,
+            t;
+            tracks=tracker,
+            atol=atol,
+            rtol=rtol,
+            xatol=xatol,
+            xrtol=xrtol,
+            verbose=zverbose
+        )
 
     #Using Newton solve
-    value_fgh!(f, g, h, t) = value!(ss.kl, f, g, h, t;
-        jprods=jprods,
-        jtprods=jtprods,
-        atol=δ*atol,
-        rtol=δ*rtol,
-        logging=logging
-    )
-    t = Optim.minimizer(Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton()))[1]
+    elseif mode==:Newton
+        value_fgh!(f, g, h, t) = value!(ss.kl, f, g, h, t;
+            jprods=jprods,
+            jtprods=jtprods,
+            atol=δ*atol,
+            rtol=δ*rtol,
+            logging=logging
+        )
+        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton(), Optim.Options(x_abstol=1e-6, x_reltol=1e-6))
+
+        t = Optim.minimizer(stats)[1]
+        println(t)
+        show(stats)
+
+    end
 
     elapsed_time = time() - start_time
 
