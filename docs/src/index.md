@@ -4,30 +4,53 @@ CurrentModule = DualPerspective
 
 # DualPerspective.jl
 
-*Efficient solvers for Kullback-Leibler regularized least squares problems and variations.*
+*Efficient solvers for Kullback-Leibler regularized least-squares problems and variations.*
 
 ## Overview
 
-This package provides algorithms for solving Kullback-Leibler (KL) regularized least squares problems of the form:
+This package provides efficient algorithms for solving optimization problems with Kullback-Leibler (KL) regularization, with a focus on linear least-squares formulations
 
-$$\min_{p \in \mathcal{X}} \tfrac{1}{2\lambda} \|Ax - b\|^2 + \langle c, x \rangle + \rent(x \mid q)$$
+$$\min_{p \in \Delta} \tfrac{1}{2\lambda} \|Ax - b\|^2_{C^{-1}} + \ip{c, x} + \KL(x \mid q),$$
 
-where $A$ is a linear operator from $\R^n$ to $\RR^m$, $b$ is an $m$-vector of observations, $c$ is an $n$-vector, $\lambda$ is a positive regularization parameter, and $q$ is an $n$-vector with strictly positive entries.
+where
 
+$$\KL(x \mid q) =
+\begin{cases}
+\sum_{j=1}^n x_j \log\left(x_j/q_j\right) & \text{if } x\in\Delta\\
++\infty & \text{otherwise,}
+\end{cases}$$
 
-where $\mathcal{X}$ is either:
-- The probability simplex: $\Delta := \{ x∈ℝ^n_+ \mid ∑_j x_j=1\}$
-- The nonnegative orthant $ℝ^n_+$
+is the KL divergence between densities $x$ and $q$ in the probability simplex
 
-The algorithm is based on a trust-region Newton CG method applied to the dual problem.
+$$\Delta:=\{x\in\R^n_+ \mid  \sum_{j=1}^n x_j = 1\}.$$
+
+The problem data is defined by
+
+-  the linear operator $A$ from $\R^n$ to $\R^m$
+-  the observation vector $b\in\R^m$
+-  the vector $c\in\R^n$
+-  the positive-definite linear operator $C$ on $\R^n$
+-  the regularization parameter $\lambda>0$.
+
+The operators $A$ and $C$ can be an explicit matrices or linear maps that implement forward and adjoint products, i.e., `A*x` and `A'*y` with vectors `x` and `y`.
+
+A dual-perspective approach provides for stable and efficient solution of this problem, including important problem classes such as
+
+- linear programming
+- optimal transport
+- least squares (including simplex constraints)
+- Haussdorff moment problems
+
 
 ## Installation
 
+The package is available on the Julia General Registry, and can be installed via
+
 ```julia
-import Pkg; Pkg.add(url="https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl")
+import Pkg; Pkg.add("DualPerspective")
 ```
 
-For Python users, the package is available on PyPI:
+For Python users, the package is available on [PyPI](https://pypi.org/project/DualPerspective/):
 
 ```bash
 pip install DualPerspective
