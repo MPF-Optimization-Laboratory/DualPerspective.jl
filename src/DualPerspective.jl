@@ -10,6 +10,7 @@ using NLPModels
 using LinearOperators
 using SolverCore
 using Pkg
+using LineSearches
 
 import Optim
 using Krylov: cg

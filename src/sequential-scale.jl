@@ -15,7 +15,7 @@ function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) whe
     
     # Compute derivative of value function
     y = s.residual/λ
-    dv = -(lseatyc!(kl, y) - log(t) - 1)
+    dv = -(lseatyc!(kl, y) - log(t))
     
     # Set starting point for next iteration
     update_y0!(kl, s.residual/λ)
@@ -37,7 +37,7 @@ function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs
     y = s.residual/λ
 
     #Dual objective value
-    f = dObj!(kl, y)
+    f = -dObj!(kl, y)
     
     # Compute derivative of value function
     if !isnothing(dv)
@@ -52,9 +52,10 @@ function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs
         m = size(A,1)
         H = LinearOperator(Float64, m, m, true, true, hv!)
 
-        ω,_ = cg(H, A*grad(kl.lse))
+        ω,_ = cg(H, b)
 
         hv[1,1] = 1/t[1] + b'*ω
+        # hv[1,1] = 1/t[1] + (1/kl.λ)*norm(b)^2
     end
 
     # Set starting point for next iteration
@@ -156,7 +157,7 @@ function solve!(
             rtol=δ*rtol,
             logging=logging
         )
-        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton(), Optim.Options(x_abstol=1e-6, x_reltol=1e-6))
+        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton(linesearch=LineSearches.BackTracking()), Optim.Options(x_abstol=1e-6, x_reltol=1e-6))
 
         t = Optim.minimizer(stats)[1]
         println(t)
