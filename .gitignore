@@ -12,6 +12,8 @@ anim_fps1.gif
 __pycache__/
 *.pyc
 dist/
+build/
+pypi/build/
 *.egg-info/
 .pytest_cache/
 .venv/
@@ -24,3 +26,7 @@ ENV/
 .env
 .env.local
 memory-bank/**
+
+# Documentation
+docs/build/
+scratch/

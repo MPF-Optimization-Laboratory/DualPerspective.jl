@@ -96,21 +96,11 @@ This will start the julia REPL, and add the repo to the julia `LOAD_PATH`. To st
 using DualPerspective
 ```
 
-And start running code.
-
 #### Using in a notebook
 
 To use this package in a notebook while developing, add it manually to your julia `LOAD_PATH` by
 ```julia
 push!(LOAD_PATH, "/path/to/the/library")
-```
-
-### Adding dependencies
-
-To add new dependecies, start the REPL as above, then run
-
-```julia
-Pkg.add("Package name")
 ```
 
 ### Testing
@@ -120,5 +110,3 @@ Each pull requested will be tested against the current tests, and new tests are 
 ```bash
 julia --project=. -i -e 'using Pkg; Pkg.test()'
 ```
-
-From the root directory.
