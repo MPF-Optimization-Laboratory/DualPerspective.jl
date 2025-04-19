@@ -15,7 +15,7 @@ function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) whe
     
     # Compute derivative of value function
     y = s.residual/λ
-    dv = -(lseatyc!(kl, y) - log(t))
+    dv = -(lseatyc!(kl, y) - log(t) - 1)
     
     # Set starting point for next iteration
     update_y0!(kl, s.residual/λ)
@@ -41,7 +41,7 @@ function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs
     
     # Compute derivative of value function
     if !isnothing(dv)
-        dv .= -(lseatyc!(kl, y) - log(t[1]))
+        dv .= -(lseatyc!(kl, y) - log(t[1]) - 1)
     end
 
     #Hessian
