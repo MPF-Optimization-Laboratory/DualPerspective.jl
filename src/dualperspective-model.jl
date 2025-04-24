@@ -35,7 +35,7 @@ model = DPModel(A=A, b=b)
     b::SB
     c::S = begin
               m, n = size(A)
-              c = ones(eltype(A), n)
+              c = -ones(eltype(A), n)
             end
     q::S = begin
              m, n = size(A)
@@ -61,11 +61,52 @@ end
 DPModel(A, b; kwargs...) = DPModel(A=A, b=b; kwargs...)
 
 function Base.show(io::IO, kl::DPModel)
-    println(io, "KL regularized least-squares"*
-                (kl.name == "" ? "" : ": "*kl.name))
-    println(io, @sprintf("   m = %10d  bNrm = %7.1e", size(kl.A, 1), kl.bNrm))
-    println(io, @sprintf("   n = %10d  λ    = %7.1e", size(kl.A, 2), kl.λ))
-    println(io, @sprintf("       %10s  τ    = %7.1e"," ", kl.scale))
+    box_width = 58  # Adjusted width for better formatting
+    
+    # Box top
+    println(io, "┌" * "─"^(box_width-2) * "┐")
+    
+    # Title with centered text
+    title_padding = max(0, div(box_width - 2 - length(kl.name), 2))
+    right_padding = max(0, box_width - 2 - length(kl.name) - title_padding)
+    title_line = "│" * " "^title_padding * kl.name * " "^right_padding * "│"
+    println(io, title_line)
+    
+    # Box separator
+    println(io, "├" * "─"^(box_width-2) * "┤")
+    
+    # Model dimensions and parameters with fixed formatting
+    println(io, @sprintf("│ %-15s = %8s    %-4s = %10.3e        │", "num rows (m)", string(size(kl.A, 1)), "‖b‖₂", kl.bNrm))
+    println(io, @sprintf("│ %-15s = %8s    %-4s = %10.3e        │", "num cols (n)", string(size(kl.A, 2)), "λ", kl.λ))
+    println(io, @sprintf("│ %-15s = %8s    %-4s = %10.3e        │", "element type", string(typeof(kl.λ)), "τ", kl.scale))
+    
+    # Check if C is a UniformScaling matrix
+    if kl.C isa UniformScaling
+        println(io, @sprintf("│ %-15s = %-8s (%10.3e)                │", "covariance (C)", "uniform", kl.C.λ))
+    else
+        println(io, @sprintf("│ %-15s = %-8s                         │", "covariance (C)", "custom"))
+    end
+    
+    # Check if q is a uniform vector (all elements are approximately equal)
+    if length(kl.q) > 0 && all(x -> x ≈ first(kl.q), kl.q)
+        q_val = first(kl.q)
+        println(io, @sprintf("│ %-15s = %-8s (%10.3e)              │", "prior (q)", "uniform", q_val))
+    else
+        q_min, q_max = extrema(kl.q)
+        println(io, @sprintf("│ %-15s = %-8s [%8.3e, %8.3e]      │", "prior (q)", "custom", q_min, q_max))
+    end
+    
+    # Check if c is a constant vector (all elements are the same)
+    if length(kl.c) > 0 && all(x -> x ≈ first(kl.c), kl.c)
+        c_val = first(kl.c)
+        println(io, @sprintf("│ %-15s = %-8s (%10.3e)                │", "cost (c)", "constant", c_val))
+    else
+        c_min, c_max = extrema(kl.c)
+        println(io, @sprintf("│ %-15s = %-8s [%8.3e, %8.3e] │", "cost (c)", "variable", c_min, c_max))
+    end
+    
+    # Box bottom
+    println(io, "└" * "─"^(box_width-2) * "┘")
 end
 
 """
