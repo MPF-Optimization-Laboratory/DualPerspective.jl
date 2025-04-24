@@ -18,7 +18,7 @@ export randDPModel
 
 DEFAULT_PRECISION(T) = (eps(T))^(1/3)
 
-include("logsumexp.jl")
+include("logexp.jl")
 include("dualperspective-model.jl")
 include("ss-model.jl")
 include("newtoncg.jl")

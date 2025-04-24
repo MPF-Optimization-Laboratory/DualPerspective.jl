@@ -1,44 +1,33 @@
 """
-    DPModel{T<:AbstractFloat, M, CT, SB<:AbstractVector{T}, S<:AbstractVector{T}} <: AbstractNLPModel{T, S}
+    DPModel
 
-Dual perspective model for optimization problems, extending `AbstractNLPModel` with KL-regularized least squares functionality.
+The Dual perspective data type holds the data for the KL-regularized linear least-squares model. It extends the [`AbstractNLPModel` interface](https://jso.dev/NLPModels.jl/stable/reference/#NLPModels.AbstractNLPModel).
+    
+Instantiate the model keyword arguments, e.g.,
+```julia
+model = DPModel(A=A, b=b; λ=1e-3, C=I)
+```
+or using the convenience constructor that makes the first two arguments `A` and `b` required, and infers the other arguments from their sizes, e.g.,
+```julia
+model = DPModel(A, b; λ=1e-3, C=I)
+```
 
-# Fields
-- `A::M`: Constraint matrix defining the linear system
-- `b::SB`: Target vector in the linear system Ax ≈ b
-- `c::S`: Cost vector for the objective function (defaults to ones)
-- `q::S`: Prior distribution vector for KL divergence term (defaults to uniform 1/n)
-- `λ::T`: Regularization parameter controlling the strength of the KL term (default: √eps)
-- `C::CT`: Positive definite scaling matrix for the linear system (default: Identity)
-- `mbuf::S`: First m-dimensional buffer for internal computations
-- `mbuf2::S`: Second m-dimensional buffer for internal computations
-- `nbuf::S`: n-dimensional buffer for internal computations
-- `bNrm::T`: Cached norm of vector b for scaling purposes
-- `scale::T`: Problem scaling factor (default: 1.0)
-- `lse::LogExpFunction`: Log-sum-exp function for computing KL divergence
-- `name::String`: Optional identifier for the problem instance
-- `meta::NLPModelMeta{T,S}`: Problem metadata required by NLPModels interface
-- `counters::Counters`: Performance counters for operation tracking
-
-# Parameters
-- `T`: Floating point type for numerical computations
-- `M`: Matrix type for the constraint matrix, must be a subtype of AbstractMatrix
-- `CT`: Type of the scaling matrix
-- `SB`: Vector type for the right-hand side, must be a subtype of AbstractVector{T}
-- `S`: Vector type for solution and workspace vectors, must be a subtype of AbstractVector{T}
+# Keyword fields
+- `A` (`AbstractMatrix{T}`, required): Constraint matrix defining the linear system.
+- `b` (`AbstractVector{T}`, required): Target vector in the linear system Ax ≈ b.
+- `c` (`AbstractVector{T}`, default: ones(n)): Cost vector for the objective function.
+- `q` (`AbstractVector{T}`, default: fill(1/n, n)): Prior distribution vector for KL divergence term.
+- `λ` (`T`, default: √eps): Regularization parameter controlling the strength of the KL term.
+- `scale` (`T`, default: one(eltype(A))): Scaling factor for the problem.
+- `C` (`AbstractMatrix{T}`, default: I): Positive definite scaling matrix for the linear system.
+- `name` (`String`, default: "Dual Perspective Model"): Optional identifier for the problem instance.
 
 # Examples
+
+Create a simple dual perspective model:
 ```julia
-# Create a simple dual perspective model
-A = randn(10, 5)
-b = randn(10)
+A, b = randn(10, 5), randn(10)
 model = DPModel(A=A, b=b)
-
-# Create model with custom regularization
-model = DPModel(A=A, b=b, λ=1e-3)
-
-# Simplified model creation:
-model = DPModel(A, b)
 ```
 """
 @kwdef mutable struct DPModel{T<:AbstractFloat, M, CT, SB<:AbstractVector{T}, S<:AbstractVector{T}} <: AbstractNLPModel{T, S}
@@ -55,18 +44,18 @@ model = DPModel(A, b)
            end
     λ::T = √eps(eltype(A))
     C::CT = I
-    mbuf::S = similar(b)
-    mbuf2::S = similar(b)
-    nbuf::S = similar(q)
-    bNrm::T = norm(b)
-    scale::T = one(eltype(A))
-    lse::LogExpFunction = LogExpFunction(q)
-    name::String = ""
-    meta::NLPModelMeta{T, S} = begin
+    mbuf::S = similar(b) # first m-dimensional buffer for internal computations
+    mbuf2::S = similar(b) # second m-dimensional buffer for internal computations
+    nbuf::S = similar(q) # n-dimensional buffer for internal computations
+    bNrm::T = norm(b) # cached norm of vector b for scaling purposes
+    scale::T = one(eltype(A)) # problem scaling factor τ
+    lse::LogExp = LogExp(q) # log-sum-exp function for computing KL divergence
+    name::String = "Dual Perspective Model" # optional identifier for the problem instance
+    meta::NLPModelMeta{T, S} = begin # problem metadata required by NLPModels interface
         m = size(A, 1)
         NLPModelMeta(m, name="Dual Perspective Model")
     end
-    counters::Counters = Counters()
+    counters::Counters = Counters() # performance counters for operation tracking
 end
 
 DPModel(A, b; kwargs...) = DPModel(A=A, b=b; kwargs...)

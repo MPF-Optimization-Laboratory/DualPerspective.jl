@@ -10,7 +10,7 @@ CurrentModule = DualPerspective
 
 This package provides efficient algorithms for solving optimization problems with Kullback-Leibler (KL) regularization, with a focus on linear least-squares formulations
 
-$$\min_{p \in \Delta} \tfrac{1}{2\lambda} \|Ax - b\|^2_{C^{-1}} + \ip{c, x} + \KL(x \mid q),$$
+$$\min_{p \in \Delta^n} \tfrac{1}{2\lambda} \|Ax - b\|^2_{C^{-1}} + \ip{c, x} + \KL(x \mid q), \tag{P}$$
 
 where
 
@@ -22,15 +22,16 @@ $$\KL(x \mid q) =
 
 is the KL divergence between densities $x$ and $q$ in the probability simplex
 
-$$\Delta:=\{x\in\R^n_+ \mid  \sum_{j=1}^n x_j = 1\}.$$
+$$\Delta^n:=\{x\in\R^n_+ \mid  \sum_{j=1}^n x_j = 1\}.$$
 
 The problem data is defined by
 
 -  the linear operator $A$ from $\R^n$ to $\R^m$
 -  the observation vector $b\in\R^m$
--  the vector $c\in\R^n$
--  the positive-definite linear operator $C$ on $\R^n$
--  the regularization parameter $\lambda>0$.
+-  the linear cost vector $c\in\R^n$ (default: $c=e$)
+-  the strictly positive vector $q\in\relint\Delta^n$ (default: $q=e/n$)
+-  the positive-definite linear operator $C$ on $\R^n$ (default: $C=I$)
+-  the regularization parameter $\lambda>0$ (default: `λ=√eps(eltype(A))`).
 
 The operators $A$ and $C$ can be an explicit matrices or linear maps that implement forward and adjoint products, i.e., `A*x` and `A'*y` with vectors `x` and `y`.
 
@@ -78,6 +79,7 @@ solution = solve!(ot, trace=true)   # Solution to the OT problem
 ```@contents
 Pages = [
     "guide.md",
+    "theory.md",
     "examples.md",
     "api.md",
 ]

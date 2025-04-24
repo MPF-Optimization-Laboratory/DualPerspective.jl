@@ -1,7 +1,7 @@
 using Test
 
 @testset "test-logsumexp" begin
-    include("test-logsumexp.jl")
+    include("test-logexp.jl")
 end
 
 @testset "test-dualperspective-model" begin

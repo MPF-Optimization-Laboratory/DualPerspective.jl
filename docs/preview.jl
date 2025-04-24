@@ -8,5 +8,9 @@ using LiveServer
 servedocs(
     doc_env=true,                    # Use the docs environment
     include_dirs=["../src/"],        # Watch package source code for docstring changes
-    launch_browser=true              # Open the browser automatically
+    launch_browser=false             # Don't open the browser automatically
 ) 
+
+# Server will start at http://localhost:8000 by default
+println("Documentation server started at http://localhost:8000")
+println("To view in VS Code, open Simple Browser and navigate to this URL") 

@@ -1,20 +1,20 @@
 using DualPerspective, Test, LinearAlgebra, Random
-import DualPerspective: LogExpFunction, kl_divergence, obj!, grad, hess, myfindmax, sum_all_but
+import DualPerspective: LogExp, kl_divergence, obj!, grad, hess, myfindmax, sum_all_but
 using ForwardDiff
 
-@testset "LogExpFunction Constructor" begin
+@testset "LogExp Constructor" begin
     # Valid construction tests
     q = [0.2, 0.3, 0.5]
-    lse = LogExpFunction(q)
+    lse = LogExp(q)
     @test lse.q == q
     @test length(lse.g) == length(q)
     
     # Error handling tests
-    @test_throws AssertionError LogExpFunction([-0.1, 0.5, 0.6])
+    @test_throws AssertionError LogExp([-0.1, 0.5, 0.6])
     
     # Unnormalized vector test
     q_unnorm = [1.0, 2.0, 3.0]
-    lse_unnorm = LogExpFunction(q_unnorm)
+    lse_unnorm = LogExp(q_unnorm)
     @test lse_unnorm.q == q_unnorm
 end
 
@@ -49,7 +49,7 @@ end
 @testset "LogΣexp Evaluation (obj!)" begin
     Random.seed!(123)
     q = [0.2, 0.3, 0.5]
-    lse = LogExpFunction(q)
+    lse = LogExp(q)
     
     # Simple case
     z = [1.0, 2.0, 0.5]
@@ -100,7 +100,7 @@ end
 
 @testset "Gradient and Hessian" begin
     q = [0.25, 0.25, 0.5]
-    lse = LogExpFunction(q)
+    lse = LogExp(q)
     p = [0.1, 0.2, -0.1]
     
     # Compute function, gradient, and Hessian
@@ -131,7 +131,7 @@ end
 
 @testset "Numerical Stability" begin
     q = ones(5) ./ 5
-    lse = LogExpFunction(q)
+    lse = LogExp(q)
     
     # Test with large values
     p_large = [1000.0, 0.0, 0.0, 0.0, 0.0]
@@ -160,7 +160,7 @@ end
     
     # Test with skewed prior (one element dominates, others very small)
     q_skewed = [1.0 - 4e-14, 1e-14, 1e-14, 1e-14, 1e-14]
-    lse_skewed = LogExpFunction(q_skewed)
+    lse_skewed = LogExp(q_skewed)
     
     # Test with uniform input
     p_uniform = zeros(5)
