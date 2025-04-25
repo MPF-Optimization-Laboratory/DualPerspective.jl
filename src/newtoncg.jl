@@ -185,8 +185,8 @@ function solve!(
         solver, kl; 
         M=M, 
         callback=cb, 
-        atol=zero(T)+1e-2, 
-        rtol=zero(T)+1e-2, 
+        atol=zero(T), 
+        rtol=zero(T), 
         max_time=max_time
     )
 

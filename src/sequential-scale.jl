@@ -155,7 +155,8 @@ function solve!(
             jtprods=jtprods,
             atol=δ*atol,
             rtol=δ*rtol,
-            logging=logging
+            logging=logging,
+            kwargs...
         )
         stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton(linesearch=LineSearches.BackTracking()), Optim.Options(x_abstol=1e-6, x_reltol=1e-6))
 
