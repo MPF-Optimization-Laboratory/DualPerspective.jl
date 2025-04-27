@@ -49,7 +49,8 @@ end
     ssSoln = solve!(kl, SequentialSolve(), zverbose=false, rtol=1e-6, logging=0, δ=1e-1)
     x1 = ssSoln.solution
     t1 = kl.scale
-    @test DualPerspective.value!(kl, t1) < 1e-6
+    v, dv = DualPerspective.value!(kl, t1)
+    @test dv < 1e-6
 
     # Solve the KL problem with the scaling `t1` obtained above
     reset!(kl)

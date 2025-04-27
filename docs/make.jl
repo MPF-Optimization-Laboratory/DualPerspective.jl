@@ -3,12 +3,10 @@ Pkg.activate(@__DIR__) # Activate the docs environment
 Pkg.develop(PackageSpec(path=joinpath(@__DIR__, ".."))) # Develop the main package
 
 using Revise
-Revise.revise()
-
 using Documenter
 using Documenter.Remotes
-using DualPerspective
 using DocumenterCitations
+using DualPerspective
 
 # Define macros here.
 const MATHJAX3_MACROS = Dict(

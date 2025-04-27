@@ -30,47 +30,26 @@ function lseatyc!(kl, y)
 end
 
 """
-    dObj!(kl::DPModel, y) -> T where T<:AbstractFloat
+    dObj!(kl::DPModel{T}, y) -> T where T<:AbstractFloat
 
-Compute the dual objective function value at point y.
+Compute the dual objective function value at the vector `y`:
 
-# Arguments
-- `kl`: A `DPModel` containing model parameters and buffers
-- `y`: Vector at which to evaluate the dual objective
+    d(y) = -(b∙y - 0.5λ y∙Cy - τ log∑exp(A'y - c) - τlogτ) 
 
-# Details
-The dual objective has two forms depending on scaling:
-
-1. Base case (no scaling, unweighted 2-norm):
-    ```
-    f(y) = log∑exp(A'y - c) - 0.5λ y∙Cy - b∙y
-    ```
-
-2. With scaling parameter τ and weighted 2-norm:
-    ```
-    f(y) = τ log∑exp(A'y - c) - τ log τ + 0.5λ y∙Cy - b∙y
-    ```
-
-where:
-- A is the linear operator
-- c is the cost vector
-- λ is the regularization parameter
-- C is the positive definite scaling matrix
-- b is the target vector
-- τ is the scaling parameter (stored in kl.scale)
+The scale parameter `τ` is taken from the `scale` field of `kl`.
 
 # Returns
-- The scalar value of the dual objective, with type matching the model's type parameter T
+- The scalar value of the dual objective, with type matching the model's type parameter `T`.
 
-# Note
-This is an in-place operation that modifies internal buffers of the model and
-increments the transpose product counter.
+!!! warning "Objective sign"
+    This function implements a dual objective based on **minimization**. 
+
 """
 function dObj!(kl::DPModel, y)
     @unpack b, λ, C, scale = kl 
     increment!(kl, :neval_jtprod)
-    f = lseatyc!(kl, y)
-    return scale*f - scale*log(scale) + 0.5λ*dot(y, C, y) - b⋅y
+    d = lseatyc!(kl, y)
+    return scale*d - scale*log(scale) + 0.5λ*dot(y, C, y) - b⋅y
 end
 
 NLPModels.obj(kl::DPModel, y) = dObj!(kl, y)
@@ -135,26 +114,26 @@ function NLPModels.hprod!(kl::DPModel{T}, ::AbstractVector, z::AbstractVector, H
 end
 
 """
-Primal objective:
+    pObj!(kl::DPModel, x)
 
-Calculates the primal objective value
+Compute the primal objective function value of the problem defined by `kl` at point `x`.
 
-    f(x) = 1/(2λ) ⟨Ax-b,C⁻¹(Ax-b)⟩ + ⟨c, x⟩ + KL(x || q)
+# Returns
+- The scalar value of the primal objective, with type matching the model's type parameter T
 
+!!! note
+    Evaluating the least-squares residual term requires solving a system of linear equations involving the covariance matrix `C`, which is currently computed using the `\\` operator, i.e., `C \\ r`.
 
 """
 function pObj!(kl::DPModel, x)
     @unpack A, b, c, C, q, λ, mbuf, mbuf2 = kl
+    r, r2 = mbuf, mbuf2
 
-    # Compute Ax - b in-place
-    mul!(mbuf, A, x)           # mbuf = A * x
-    mbuf .-= b                 # mbuf = Ax - b
-
-    # Solve C * y = mbuf to get y = C⁻¹(mbuf)
-    mbuf2 .= C \ mbuf      # Use \ to solve C * y = mbuf
-
-    # Compute ⟨Ax - b, C⁻¹(Ax - b)⟩
-    quadratic_term = dot(mbuf, mbuf2)
+    # Compute quadratic term ⟨Ax - b, C⁻¹(Ax - b)⟩
+    r .= b
+    mul!(r, A, x, 1, -1)
+    r2 .= C \ r 
+    quadratic_term = dot(r, r2)
 
     return (1/(2λ)) * quadratic_term + dot(c, x) + kl_divergence(x, q)
 end

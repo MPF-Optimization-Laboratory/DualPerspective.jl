@@ -40,21 +40,20 @@ struct LogExp{T<:AbstractFloat, V1<:AbstractVector{T}, V2<:AbstractVector{T}}
 end
 
 @doc raw"""
-    kl_divergence(x, q) -> T where T<:AbstractFloat
+    kl_divergence(x, x̄)
 
-Compute the Kullback-Leibler divergence between probability distributions x and q:
-
-``\phi(x \mid q) = ∑_{j=1}^n x_j \log(x_j / q_j) \quad \text{for} \quad x_j > 0``
+Compute the Kullback-Leibler divergence between vectors `x` and `x̄`.
 
 # Implementation Details
 - Skips entries where `x_j = 0` 
-- Returns zero if `x` and `q` are identical
+- Returns zero if `x` and `x̄` are identical
+- No checks are performed on the validity of the inputs, i.e., that `x` is a probability vector or that `x̄` is positive.
 """
-function kl_divergence(x, q)
+function kl_divergence(x, x̄)
     result = zero(eltype(x))
-    for (xi, qi) in zip(x, q)
+    for (xi, x̄i) in zip(x, x̄)
         if xi > 0
-            result += xi * (log(xi) - log(qi))
+            result += xi * (log(xi) - log(x̄i))
         end
     end
     return result

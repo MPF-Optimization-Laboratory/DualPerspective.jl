@@ -1,26 +1,30 @@
 """
-    value!(kl::DPModel, t; kwargs...)
+    value!(kl::DPModel, τ; kwargs...) -> (v, dv)
 
-Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
+Compute the dual objective value `v` and its derivative `dv` with respect to the scaling parameter `τ`.
+
+!!! note "Minimum scaling parameter"
+    The scaling parameter `τ` is clamped to at least `eps(T)` to avoid numerical issues.
 """
-function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) where T
-    t = max(t, eps(T))
+function value!(kl::DPModel{T}, τ; prods=[0, 0], kwargs...) where T
+    τ = max(τ, eps(T))
     @unpack λ, A = kl
-    scale!(kl, t)
+    scale!(kl, τ)
     s = solve!(kl; kwargs...)
+    v = -s.dual_obj
     
     # Update product counts
-    jprods[1] += neval_jprod(kl)
-    jtprods[1] += neval_jtprod(kl)
+    prods[1] += neval_jprod(kl)
+    prods[2] += neval_jtprod(kl)
     
     # Compute derivative of value function
     y = s.residual/λ
-    dv = -(lseatyc!(kl, y) - log(t) - 1)
+    dv = -lseatyc!(kl, y) + log(τ) + 1
     
     # Set starting point for next iteration
-    update_y0!(kl, s.residual/λ)
+    update_y0!(kl, y)
     
-    return dv
+    return v, dv
 end
 
 struct SequentialSolve end
@@ -65,11 +69,9 @@ function solve!(
     kwargs...
 ) where T
 
-    ss = SSModel(kl)
-
     # Initialize counters and trackers
-    jprods = Int[0]
-    jtprods = Int[0]
+    start_time = time()
+    prods = [0, 0]
     tracker = Roots.Tracks()
     tracer = DataFrame(
         iter=Int[], 
@@ -81,16 +83,11 @@ function solve!(
     )
 
     # Find optimal t using root finding
-    start_time = time()
-    dv!(t) = value!(
-        ss.kl, 
-        t;
-        jprods=jprods,
-        jtprods=jtprods,
-        atol=δ*atol,
-        rtol=δ*rtol,
-        logging=logging
-    )
+    function dv!(t)
+        _, dv = value!(kl, t; prods=prods, atol=δ*atol, rtol=δ*rtol, logging=logging)
+        return dv
+    end
+
     t = Roots.find_zero(
         dv!,
         t;
@@ -101,27 +98,23 @@ function solve!(
         xrtol=xrtol,
         verbose=zverbose
     )
-    elapsed_time = time() - start_time
 
     # Final solve at optimal t
-    scale!(ss.kl, t)
+    scale!(kl, t)
     final_run_stats = solve!(
-        ss.kl,
+        kl,
         atol=δ*atol,
         rtol=δ*rtol,
         logging=logging,
         reset_counters=false
     )
 
-    # Determine solution status
-    status = tracker.convergence_flag == :x_converged ? :optimal : :unknown
-
     stats = ExecutionStats(
-        status,
-        elapsed_time,                   # elapsed time
-        tracker.steps,                  # number of iterations
-        jprods[1],                     # number of products with A
-        jtprods[1],                    # number of products with A'
+        tracker.convergence_flag == :x_converged ? :optimal : :unknown,
+        time() - start_time,                  # elapsed time
+        tracker.steps,                 # number of iterations
+        prods[1],                      # number of products with A
+        prods[2],                      # number of products with A'
         zero(T),                       # TODO: primal objective
         final_run_stats.dual_obj,      # dual objective
         final_run_stats.solution,      # primal solution `x`
