@@ -142,7 +142,7 @@ function solve!(
     kl::DPModel{T};
     M=I,
     logging=0,
-    max_time::Float64=30.0,
+    max_time::Real=30,
     reset_counters=true,
     solver=TrunkSolver(kl),
     kwargs...) where T
@@ -166,7 +166,7 @@ function solve!(
         callback=cb, 
         atol=zero(T), 
         rtol=zero(T), 
-        max_time=max_time
+        max_time=Float64(max_time)
     )
 
     primal_solution = kl.scale .* grad(kl.lse)

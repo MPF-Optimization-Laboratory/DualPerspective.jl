@@ -132,7 +132,7 @@ def solve(model, atol=1e-6, rtol=1e-6, verbose=False, logging=0):
         t=t0,
         atol=atol,
         rtol=rtol,
-        zverbose=verbose,
+        verbose=verbose,
         logging=logging
     )
     

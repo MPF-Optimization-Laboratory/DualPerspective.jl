@@ -45,8 +45,7 @@ that maximizes the dual objective. The optimal `t` is found by applying root-fin
 - `xatol::Real=1e-6`: Absolute tolerance for convergence in `t`
 - `xrtol::Real=1e-6`: Relative tolerance for convergence in `t`
 - `δ::Real=1e-2`: Tolerance factor applied to `atol` and `rtol` for the inner optimization
-- `zverbose::Bool=false`: Whether to print verbose output from root-finding
-- `logging::Int=0`: Logging level (0=none, 1=basic, 2=detailed)
+- `verbose::Bool=false`: Whether to print verbose output from root-finding
 
 # Returns
 An `ExecutionStats` struct containing:
@@ -64,8 +63,7 @@ function solve!(
     xatol=1e-6,
     xrtol=1e-6,
     δ=1e-2,
-    zverbose=false,
-    logging=0,
+    verbose=false,
     kwargs...
 ) where T
 
@@ -84,7 +82,7 @@ function solve!(
 
     # Find optimal t using root finding
     function dv!(t)
-        _, dv = value!(kl, t; prods=prods, atol=δ*atol, rtol=δ*rtol, logging=logging)
+        _, dv = value!(kl, t; prods=prods, atol=δ*atol, rtol=δ*rtol, kwargs...)
         return dv
     end
 
@@ -96,17 +94,17 @@ function solve!(
         rtol=rtol,
         xatol=xatol,
         xrtol=xrtol,
-        verbose=zverbose
+        verbose=verbose
     )
 
     # Final solve at optimal t
     scale!(kl, t)
     final_run_stats = solve!(
-        kl,
+        kl;
         atol=δ*atol,
         rtol=δ*rtol,
-        logging=logging,
-        reset_counters=false
+        reset_counters=false,
+        kwargs...
     )
 
     stats = ExecutionStats(
