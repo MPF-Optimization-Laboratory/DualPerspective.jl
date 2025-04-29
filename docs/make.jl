@@ -17,6 +17,7 @@ const MATHJAX3_MACROS = Dict(
         :packages   => ["base", "ams", "autoload", "configmacros"],
         :processEscapes => true,
         :macros     => Dict(
+            :Diag => [raw"\mathop{\mathrm{\bf Diag}}", 0],
             :ip    => [raw"\langle #1 \rangle", 1],
             :R => [raw"\mathbb{R}", 0],
             :eR => [raw"\overline\R", 0],
