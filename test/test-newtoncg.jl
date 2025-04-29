@@ -46,7 +46,7 @@ end
 
     # Value-function iteration: nonnegative 
     reset!(kl)
-    ssSoln = solve!(kl, SequentialSolve(), zverbose=false, rtol=1e-6, logging=0, δ=1e-1)
+    ssSoln = solve!(kl, SequentialSolve(), verbose=false, rtol=1e-6, logging=0, δ=1e-1)
     x1 = ssSoln.solution
     t1 = kl.scale
     v, dv = DualPerspective.value!(kl, t1)

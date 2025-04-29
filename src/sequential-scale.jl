@@ -58,10 +58,10 @@ function solve!(
     kl::DPModel{T},
     ::SequentialSolve;
     t=one(T),
-    rtol=1e-6,
-    atol=1e-6, 
-    xatol=1e-6,
-    xrtol=1e-6,
+    rtol=DEFAULT_PRECISION(T),
+    atol=DEFAULT_PRECISION(T), 
+    # xatol=DEFAULT_PRECISION(T), # Removed 28 Apr 2025: not clear how to set this
+    # xrtol=DEFAULT_PRECISION(T),
     δ=1e-2,
     verbose=false,
     kwargs...
@@ -92,8 +92,6 @@ function solve!(
         tracks=tracker,
         atol=atol,
         rtol=rtol,
-        xatol=xatol,
-        xrtol=xrtol,
         verbose=verbose
     )
 

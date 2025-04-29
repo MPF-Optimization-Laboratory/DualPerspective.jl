@@ -115,9 +115,10 @@ Find the maximum element of `p` and its index. This is significantly faster than
 """
 function myfindmax(p)
     maxval, maxind = p[1], 1
-    @inbounds for i in 2:length(p)
-        if p[i] > maxval
-            maxval, maxind = p[i], i
+    pview = @view p[2:end]
+    @inbounds for (i, val) in enumerate(pview)
+        if val > maxval
+            maxval, maxind = val, i+1  # i+1 because we're indexing from p[2:end]
         end
     end
     return maxval, maxind
