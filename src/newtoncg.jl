@@ -75,6 +75,27 @@ end
 
 NLPModels.grad!(kl::DPModel, y, ∇f) = dGrad!(kl, y, ∇f)
 
+"""
+Dual objective value and gradient
+"""
+function dObjGrad!(kl::DPModel, ∇f, y)
+    @unpack A, b, λ, C, lse, scale = kl
+    increment!(kl, :neval_jprod)
+    p = grad(lse)
+    ∇f .= -b
+    if λ > 0
+        LinearAlgebra.mul!(∇f, C, y, λ, 1)
+    end
+    LinearAlgebra.mul!(∇f, A, p, scale, 1)
+
+    increment!(kl, :neval_jtprod)
+    d = lseatyc!(kl, y)
+    return scale*d - scale*log(scale) + 0.5λ*dot(y, C, y) - b⋅y 
+end
+
+"""
+Dual objective gradient
+"""
 function dHess(kl::DPModel)
     @unpack A, λ, C, lse, scale = kl
     H = hess(lse)
@@ -152,38 +173,70 @@ function solve!(
         reset!(kl)    
     end
 
-    # Tracer
+    # Tracer    
     tracer = DataFrame(iter=Int[], dual_obj=T[], r=T[], Δ=T[], Δₐ_Δₚ=T[], cgits=Int[], cgmsg=String[])
-    
-    # Callback routine
-    cb(kl, solver, stats) =
-        callback(kl, solver, M, stats, tracer, logging, max_time; kwargs...)
-    
-    # Call the Trunk solver
-    trunk_stats = SolverCore.solve!(
-        solver, kl; 
-        M=M, 
-        callback=cb, 
-        atol=zero(T), 
-        rtol=zero(T), 
-        max_time=Float64(max_time)
-    )
+
+    # RSFN
+    f(y) = dObj!(kl, y)
+    fg!(grads, y) = dObjGrad!(kl, grads, y)
+    H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
+
+    rsfn_stats = rsfn!(kl.y0, f, fg!, H,
+        mode=:RNSolver,
+        itmax=typemax(Int),
+        time_limit=Float64(max_time),
+        atol=DEFAULT_PRECISION(T),
+        rtol=DEFAULT_PRECISION(T),
+        linesearch=true)
 
     primal_solution = kl.scale .* grad(kl.lse)
-    
+
     stats = ExecutionStats(
-        trunk_stats.status,
-        trunk_stats.elapsed_time,       # elapsed time
-        trunk_stats.iter,               # number of iterations
-        neval_jprod(kl),                # number of products with A
-        neval_jtprod(kl),               # number of products with A'
-        pObj!(kl, primal_solution),     # primal objective
-        trunk_stats.objective,          # dual objective
-        primal_solution,                # primal solution `x`
-        (kl.λ).*(trunk_stats.solution), # residual r = λy
-        trunk_stats.dual_feas,          # norm of the gradient of the dual objective
+        rsfn_stats.converged,
+        rsfn_stats.run_time,
+        rsfn_stats.iterations,
+        neval_jprod(kl),
+        neval_jprod(kl),
+        pObj!(kl, primal_solution),
+        rsfn_stats.f_seq[end],
+        primal_solution,
+        (kl.λ).*(kl.y0),
+        rsfn_stats.g_seq[end],
         tracer
     )
+
+    # Tracer
+    # tracer = DataFrame(iter=Int[], dual_obj=T[], r=T[], Δ=T[], Δₐ_Δₚ=T[], cgits=Int[], cgmsg=String[])
+    
+    # Callback routine
+    # cb(kl, solver, stats) =
+        # callback(kl, solver, M, stats, tracer, logging, max_time; kwargs...)
+    
+    # Call the Trunk solver
+    # trunk_stats = SolverCore.solve!(
+    #     solver, kl; 
+    #     M=M, 
+    #     callback=cb, 
+    #     atol=zero(T), 
+    #     rtol=zero(T), 
+    #     max_time=Float64(max_time)
+    # )
+
+    # primal_solution = kl.scale .* grad(kl.lse)
+    
+    # stats = ExecutionStats(
+    #     trunk_stats.status,
+    #     trunk_stats.elapsed_time,       # elapsed time
+    #     trunk_stats.iter,               # number of iterations
+    #     neval_jprod(kl),                # number of products with A
+    #     neval_jtprod(kl),               # number of products with A'
+    #     pObj!(kl, primal_solution),     # primal objective
+    #     trunk_stats.objective,          # dual objective
+    #     primal_solution,                # primal solution `x`
+    #     (kl.λ).*(trunk_stats.solution), # residual r = λy
+    #     trunk_stats.dual_feas,          # norm of the gradient of the dual objective
+    #     tracer
+    # )
 end
 const newtoncg = solve!
 

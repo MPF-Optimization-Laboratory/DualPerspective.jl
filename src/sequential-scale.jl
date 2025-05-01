@@ -3,15 +3,15 @@
 
 Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
 """
-function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) where T
+function value!(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
     t = max(t, eps(T))
     @unpack λ, A = kl
     scale!(kl, t)
     s = solve!(kl; kwargs...)
     
     # Update product counts
-    jprods[1] += neval_jprod(kl)
-    jtprods[1] += neval_jtprod(kl)
+    prods[1] += neval_jprod(kl)
+    prods[2] += neval_jtprod(kl)
     
     # Compute derivative of value function
     y = s.residual/λ
@@ -23,15 +23,15 @@ function value!(kl::DPModel{T}, t; jprods=Int[0], jtprods=Int[0], kwargs...) whe
     return dv
 end
 
-function value!(kl::DPModel, f, dv, hv, t; jprods=Int[0], jtprods=Int[0], kwargs...)
+function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
     @unpack λ, A = kl
 
     scale!(kl, t[1])
     s = solve!(kl; kwargs...)
     
     # Update product counts
-    jprods[1] += neval_jprod(kl)
-    jtprods[1] += neval_jtprod(kl)
+    prods[1] += neval_jprod(kl)
+    prods[2] += neval_jtprod(kl)
 
     #Dual solution
     y = s.residual/λ
@@ -123,13 +123,12 @@ function solve!(
 
     if mode==:Bisection
         dv!(t) = value!(
-            ss.kl, 
+            kl, 
             t;
-            jprods=jprods,
-            jtprods=jtprods,
+            prods=prods,
             atol=δ*atol,
             rtol=δ*rtol,
-            logging=logging
+            kwargs...
         )
 
         #Using root finding
@@ -139,22 +138,20 @@ function solve!(
             tracks=tracker,
             atol=atol,
             rtol=rtol,
-            xatol=xatol,
-            xrtol=xrtol,
-            verbose=zverbose
+            verbose=verbose
         )
 
     #Using Newton solve
     elseif mode==:Newton
-        value_fgh!(f, g, h, t) = value!(ss.kl, f, g, h, t;
-            jprods=jprods,
-            jtprods=jtprods,
+        value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
+            prods=prods,
             atol=δ*atol,
             rtol=δ*rtol,
-            logging=logging,
             kwargs...
         )
-        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], Optim.Newton(linesearch=LineSearches.BackTracking()), Optim.Options(x_abstol=1e-6, x_reltol=1e-6))
+        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+            Optim.Newton(linesearch=LineSearches.BackTracking()), 
+            Optim.Options(x_abstol=atol, x_reltol=rtol))
 
         t = Optim.minimizer(stats)[1]
         println(t)
