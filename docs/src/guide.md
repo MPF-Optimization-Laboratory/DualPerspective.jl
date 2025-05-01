@@ -6,21 +6,6 @@ CurrentModule = DualPerspective
 
 This guide provides an overview of DualPerspective.jl and instructions for using the package to solve Kullback-Leibler (KL) regularized least squares problems.
 
-## Mathematical Background
-
-DualPerspective.jl solves problems of the form:
-
-```math
-\min_{p \in \mathcal{X}} \frac{1}{2\lambda} \|Ax - b\|^2 + \langle c, x \rangle + \mathop{KL}(x \mid q)
-```
-
-where:
-- $\mathcal{X}$ is either the probability simplex $\Delta := \{ x∈ℝ^n_+ \mid ∑_j x_j=1\}$ or the nonnegative orthant $ℝ^n_+$
-- $\mathop{KL}(x \mid q)$ is the Kullback-Leibler divergence, defined as $\sum_i x_i \log(x_i/q_i) - x_i + q_i$
-- $A$ is a matrix, $b$ is a vector, $c$ is a vector, and $\lambda > 0$ is a regularization parameter
-
-The package uses a dual approach to solve this problem efficiently, applying a trust-region Newton CG method to the dual formulation.
-
 ## Model Types
 
 DualPerspective.jl provides several model types for different problem scenarios:

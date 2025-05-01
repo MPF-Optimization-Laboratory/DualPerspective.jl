@@ -21,7 +21,7 @@ import DualPerspective: lseatyc!, obj!, randDPModel
 
       rtol = tol
       atol = tol
-      ssSoln = solve!(kl, SequentialSolve(), logging=0, atol=atol, rtol=rtol, zverbose=false)
+      ssSoln = solve!(kl, SequentialSolve(), logging=0, atol=atol, rtol=rtol, verbose=false)
 
       @test ssSoln.status == :optimal
 end

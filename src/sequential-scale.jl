@@ -82,8 +82,7 @@ that maximizes the dual objective. The optimal `t` is found by applying root-fin
 - `xatol::Real=1e-6`: Absolute tolerance for convergence in `t`
 - `xrtol::Real=1e-6`: Relative tolerance for convergence in `t`
 - `δ::Real=1e-2`: Tolerance factor applied to `atol` and `rtol` for the inner optimization
-- `zverbose::Bool=false`: Whether to print verbose output from root-finding
-- `logging::Int=0`: Logging level (0=none, 1=basic, 2=detailed)
+- `verbose::Bool=false`: Whether to print verbose output from root-finding
 
 # Returns
 An `ExecutionStats` struct containing:
@@ -97,21 +96,18 @@ function solve!(
     ::SequentialSolve,
     mode;
     t=one(T),
-    rtol=1e-6,
-    atol=1e-6, 
-    xatol=1e-6,
-    xrtol=1e-6,
+    rtol=DEFAULT_PRECISION(T),
+    atol=DEFAULT_PRECISION(T), 
+    # xatol=DEFAULT_PRECISION(T), # Removed 28 Apr 2025: not clear how to set this
+    # xrtol=DEFAULT_PRECISION(T),
     δ=1e-2,
-    zverbose=false,
-    logging=0,
+    verbose=false,
     kwargs...
 ) where T
 
-    ss = SSModel(kl)
-
     # Initialize counters and trackers
-    jprods = Int[0]
-    jtprods = Int[0]
+    start_time = time()
+    prods = [0, 0]
     tracker = Roots.Tracks()
     tracer = DataFrame(
         iter=Int[], 
@@ -169,24 +165,21 @@ function solve!(
     elapsed_time = time() - start_time
 
     # Final solve at optimal t
-    scale!(ss.kl, t)
+    scale!(kl, t)
     final_run_stats = solve!(
-        ss.kl,
+        kl;
         atol=δ*atol,
         rtol=δ*rtol,
-        logging=logging,
-        reset_counters=false
+        reset_counters=false,
+        kwargs...
     )
 
-    # Determine solution status
-    status = tracker.convergence_flag == :x_converged ? :optimal : :unknown
-
     stats = ExecutionStats(
-        status,
-        elapsed_time,                   # elapsed time
-        tracker.steps,                  # number of iterations
-        jprods[1],                     # number of products with A
-        jtprods[1],                    # number of products with A'
+        tracker.convergence_flag == :x_converged ? :optimal : :unknown,
+        time() - start_time,                  # elapsed time
+        tracker.steps,                 # number of iterations
+        prods[1],                      # number of products with A
+        prods[2],                      # number of products with A'
         zero(T),                       # TODO: primal objective
         final_run_stats.dual_obj,      # dual objective
         final_run_stats.solution,      # primal solution `x`
