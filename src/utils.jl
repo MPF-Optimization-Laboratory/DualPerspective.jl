@@ -1,5 +1,5 @@
 mutable struct ExecutionStats{T<:AbstractFloat, V<:AbstractVector{T}, S<:AbstractArray{T}, DF}
-    status::String
+    status::Symbol
     elapsed_time::T
     iter::Int
     neval_jprod::Int
@@ -14,12 +14,11 @@ end
 
 function Base.show(io::IO, s::ExecutionStats)
     @printf(io, "\n")
-    # if s.status == :max_iter 
-    #     @printf(io, "Maximum number of iterations reached\n")
-    # elseif s.status == :optimal
-    #     @printf(io, "Optimality conditions satisfied\n")
-    # end
-    @printf(io, s.status)
+    if s.status == :max_iter 
+        @printf(io, "Maximum number of iterations reached\n")
+    elseif s.status == :optimal
+        @printf(io, "Optimality conditions satisfied\n")
+    end
     nprods = s.neval_jprod + s.neval_jtprod
     @printf(io, "Products with A and A': %9d\n"  , nprods)
     @printf(io, "Time elapsed (sec)    : %9.1f\n", s.elapsed_time)

@@ -15,7 +15,7 @@ using LineSearches
 import Optim
 using Krylov: cg
 using LinearOperators: LinearOperator
-using QuasiNewton: rsfn!
+using QuasiNewton: rsfn!, arc!
 
 export DPModel, SSModel, OTModel, LPModel
 export SSTrunkLS, SequentialSolve, LevelSet, AdaptiveLevelSet
