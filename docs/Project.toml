@@ -1,6 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
 DualPerspective = "a1edf54d-33cf-4bd3-8f57-70bdaf668f08"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
