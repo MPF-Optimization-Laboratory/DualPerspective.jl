@@ -234,8 +234,8 @@ function solve!(
                 rtol=DEFAULT_PRECISION(T))
         end
 
-        # show(qn_stats)
-        # println()
+        show(qn_stats)
+        println()
 
         primal_solution = kl.scale .* grad(kl.lse)
 
