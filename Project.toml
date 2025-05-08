@@ -23,6 +23,7 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 UnicodePlotsExt = "UnicodePlots"
 
 [compat]
+CairoMakie = "0.13.4"
 DataFrames = "1"
 Distances = "0.10.12"
 ForwardDiff = "1.0.1"
@@ -44,6 +45,7 @@ UnicodePlots = "3.7.2"
 julia = "1"
 
 [extras]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -60,4 +62,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["Test", "Distributions", "MAT", "NPZ", "Random", "Plots", "PlutoLinks", "JuMP", "GLPK", "Distances", "Statistics", "OptimalTransport", "UnicodePlots", "ForwardDiff"]
+test = ["Test", "CairoMakie", "Distributions", "MAT", "NPZ", "Random", "Plots", "PlutoLinks", "JuMP", "GLPK", "Distances", "Statistics", "OptimalTransport", "UnicodePlots", "ForwardDiff"]
