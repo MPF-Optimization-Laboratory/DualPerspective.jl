@@ -5,7 +5,7 @@ using Printf
 using UnPack
 using DataFrames
 import Roots
-using JSOSolvers: trunk, TrunkSolver
+# using JSOSolvers: trunk, TrunkSolver
 using NLPModels
 using LinearOperators
 using SolverCore
@@ -15,7 +15,7 @@ using LineSearches
 import Optim
 using Krylov: cg
 using LinearOperators: LinearOperator
-using QuasiNewton: rsfn!, arc!
+using QuasiNewton: rsfn!, arc!, newton!
 
 export DPModel, SSModel, OTModel, LPModel
 export SSTrunkLS, SequentialSolve, LevelSet, AdaptiveLevelSet
