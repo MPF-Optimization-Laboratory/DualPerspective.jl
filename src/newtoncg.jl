@@ -161,7 +161,7 @@ end
 
 function solve!(
     kl::DPModel{T};
-    inner_mode=:RNSolver,
+    inner_mode=:newton,
     M=I,
     logging=0,
     max_time::Real=30,
@@ -240,8 +240,10 @@ function solve!(
 
         end
 
-        show(qn_stats)
-        println()
+        # if show_stats
+        #     show(qn_stats)
+        #     println()
+        # end
 
         primal_solution = kl.scale .* grad(kl.lse)
 

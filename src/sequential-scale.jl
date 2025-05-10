@@ -94,7 +94,7 @@ An `ExecutionStats` struct containing:
 function solve!(
     kl::DPModel{T},
     ::SequentialSolve,
-    mode;
+    outer_mode=:newton;
     t=one(T),
     rtol=DEFAULT_PRECISION(T),
     atol=DEFAULT_PRECISION(T), 
@@ -121,7 +121,7 @@ function solve!(
     # Find optimal t
     start_time = time()
 
-    if mode==:Bisection
+    if outer_mode==:bisection
         dv!(t) = value!(
             kl, 
             t;
@@ -142,7 +142,7 @@ function solve!(
         )
 
     #Using Newton solve
-    elseif mode==:Newton
+    elseif outer_mode==:newton
         value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
             prods=prods,
             atol=δ*atol,
