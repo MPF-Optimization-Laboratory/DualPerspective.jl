@@ -1,13 +1,14 @@
 using Test
-using DualPerspective, NLPModels, LinearAlgebra, Random
-import DualPerspective: lseatyc!, obj!, randDPModel
+using LinearAlgebra
+using Random
+using DualPerspective
 
 @testset "SSModel SequentialSolve test case" begin
       Random.seed!(1234)
       tol = 2e-5
       λ = 1e-2
       m, n = 8, 10
-      kl = randDPModel(m, n) 
+      kl = DualPerspective.randDPModel(m, n) 
       A, b = kl.A, kl.b
       regularize!(kl, λ)
 

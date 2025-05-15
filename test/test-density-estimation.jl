@@ -1,23 +1,8 @@
 using Test
 using DualPerspective
-using Statistics # For mean()
+using DualPerspective.DensityEstimation
 
-"""
-   moment_operator(x, m)
-
-Compute the moment operator for given points `x` up to order `m`.
-
-- `x`: n-vector of locations.
-- `m`: maximum order of moment to compute.
-- `A`: (m)x(n) matrix for moments.
-"""
-function moment_operator(x, m)
-   A = zeros(m, length(x))
-   for k in 1:m
-      A[k, :] = x.^k
-   end
-   return A
-end
+mean(x) = sum(x) / length(x)
 
 @testset "Uniform Die Density Estimation" begin
     p_true = ones(6) / 6

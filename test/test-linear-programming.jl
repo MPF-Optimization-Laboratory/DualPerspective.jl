@@ -1,7 +1,9 @@
 using Test
-using DualPerspective, LinearAlgebra, Random
+using LinearAlgebra
+using Random
 using JuMP
 using GLPK
+using DualPerspective
 
 @testset "Feasable LP" begin
     Random.seed!(1234)

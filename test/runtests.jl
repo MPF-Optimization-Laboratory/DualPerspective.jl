@@ -37,7 +37,7 @@ end
 end
 
 @testset "Density Estimation Tests" begin
-    include("density-estimation.jl")
+    include("test-density-estimation.jl")
 end
 
 # # Python binding tests
