@@ -16,6 +16,7 @@ export SSTrunkLS, SequentialSolve, LevelSet, AdaptiveLevelSet
 export solve!, scale!, scale, regularize!, histogram, reset!, update_y0!
 export randDPModel
 export DensityEstimation
+export fixed_point
 
 DEFAULT_PRECISION(T) = (eps(T))^(1/3)
 
@@ -32,5 +33,5 @@ include("precon.jl")
 include("linear-programming.jl")
 include("utils.jl")
 include("DensityEstimation.jl")
-
+include("fixed-point.jl")
 end 
