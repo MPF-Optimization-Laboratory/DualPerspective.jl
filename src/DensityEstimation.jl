@@ -1,5 +1,4 @@
 module DensityEstimation
-
 using ..DualPerspective
 using QuadGK
 using LinearAlgebra
@@ -26,17 +25,19 @@ function moment_operator(x, m)
    return A
 end
 
-"""
-   reconstruct(μvec::Vector, x_grid::Vector)
+@doc raw"""
+    reconstruct(μvec::Vector, x_grid::Vector; λ=1e-6, kwargs...)
 
-Reconstruct a density from the moments μ_1, μ_2, ..., μ_m contained in the m-vector `μvec`.
+Reconstruct a density from the moments $μ_1, μ_2,\ldots, μ_m$ contained in the m-vector `μvec`.
 
 # Arguments
 - `μvec`: m-vector of moments.
 - `x_grid`: grid of points at which to evaluate moment operator. 
+- `λ`: regularization parameter (default: 1e-6).
+- `kwargs`: passed to the solver. See [`DualPerspective.solve!`](@ref) for details.
 
 # Returns
-- `density`: function that esti
+- `density`: function that estimates the density at the points in `xgrid`.
 """
 function reconstruct(μvec::Vector, xgrid; λ=1e-6, kwargs...)
     m = length(μvec)
