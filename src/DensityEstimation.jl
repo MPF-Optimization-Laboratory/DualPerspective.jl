@@ -1,6 +1,5 @@
 module DensityEstimation
 using ..DualPerspective
-using QuadGK
 using LinearAlgebra
 
 export moment_operator, reconstruct 
