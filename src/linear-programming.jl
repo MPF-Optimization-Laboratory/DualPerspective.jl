@@ -29,7 +29,6 @@ Constructs an `LPModel` for the LP problem.
 - `c`: Cost vector
 - `ε`: Relaxation constant
 - `λ`: Feasibility constant
-- `maximize`: If `true`, solves max ⟨c, x⟩
 - `kwargs`: Additional keyword arguments
 
 # Returns
@@ -41,14 +40,9 @@ function LPModel(
     c;
     ε=1e-3,
     λ=1e-3,
-    maximize=false,
     kwargs...
 )
-    c = c / ε
-    if maximize
-        c = -c
-    end
-    kl = DPModel(A=A, b=b, c=c, λ=λ, kwargs...)
+    kl = DPModel(A=A, b=b, c=c/ε, λ=λ, kwargs...)
     regularize!(kl, ε * λ)
     return LPModel(kl, ε, λ)
 end
@@ -110,22 +104,16 @@ A statistics object containing the solution and status.
 # Notes
 - If the solution is found but the residual norm exceeds `1e-1`, the status is set to `:infeasible`.
 """
-solve!(lp::LPModel; kwargs...) = solve!(lp, SSTrunkLS(); kwargs...)
+solve!(lp::LPModel; kwargs...) = solve!(lp, SequentialSolve(); kwargs...)
 
 function solve!(
     lp::LPModel{T},
     Solver; 
-    logging=0,
-    monotone=true,
-    max_time=30.0,
     kwargs...
 ) where T
     klls_stats = solve!(
         lp.kl,
-        Solver,
-        logging=logging,
-        max_time=max_time,
-        monotone=monotone;
+        Solver;
         kwargs...
     )
 
