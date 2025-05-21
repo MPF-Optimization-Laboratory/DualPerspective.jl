@@ -8,10 +8,12 @@ This file implements the MonomialFunctionOperator which performs:
 It also implements the adjoint operator A' which maps a vector to a function.
 """
 
+using Test
 using Polynomials
-using Integrals
 using LinearAlgebra
-using Zygote
+using QuadGK
+using ForwardDiff
+using BenchmarkTools
 
 """
     MonomialFunctionOperator{T<:Number}
@@ -44,7 +46,7 @@ struct MonomialFunctionOperator{T<:Number}
         m::Int,
         domain::Tuple{T,T};
         rtol::T=sqrt(eps(T)),
-        atol::T=zero(T)
+        atol::T=sqrt(eps(T))
     ) where T<:Number
         @assert m > 0 "Number of monomials must be positive"
         @assert domain[1] < domain[2] "Domain must be ordered: a < b"
@@ -120,8 +122,7 @@ function Base.:*(A::MonomialFunctionOperator{T}, f::Function) where T<:Number
         
         # Integrate p(x) * f(x) over [a,b]
         integrand = x -> p(x) * f(x)
-        problem = IntegralProblem((x, _) -> integrand(x), a, b)
-        result[i] = solve(problem, QuadGKJL(; rtol=A.rtol, atol=A.atol)).u
+        result[i] = quadgk(integrand, a, b; rtol=A.rtol, atol=A.atol)[1]
     end
     
     return result
@@ -142,13 +143,8 @@ Creates a polynomial from coefficients y and returns a function for its evaluati
 """
 function Base.:*(A::MonomialFunctionAdjointOperator{T}, y::AbstractVector) where T<:Number
     @assert length(y) == A.parent.m "Vector length must match operator dimension"
-    
-    # Create polynomial from coefficients
     p = Polynomial(vcat(0.0, y))
-    
-    # Return function that evaluates this polynomial
     return p
-    # return x -> p(x)
 end
 
 """
@@ -195,16 +191,11 @@ function verify_dot_test(
     # Integrate f(x)*Aty(x) over domain
     a, b = A.domain
     integrand = x -> f(x) * Aty(x)
-    problem = IntegralProblem((x, _) -> integrand(x), a, b)
-    rhs = solve(problem, QuadGKJL(; rtol=A.rtol, atol=A.atol)).u
-    
-    # Check if the two inner products are equal
-    is_valid = isapprox(lhs, rhs, rtol=rtol)
-    
-    result = (is_valid=is_valid, lhs=lhs, rhs=rhs, diff=abs(lhs-rhs))
+    rhs = quadgk(integrand, a, b; rtol=A.rtol, atol=A.atol)[1]
     
     # Print results if verbose option is enabled
     if verbose
+        result = (is_valid=is_valid, lhs=lhs, rhs=rhs, diff=abs(lhs-rhs))
         println("\nDot-test results:")
         println("Passed: $(result.is_valid)")
         println("LHS <A*f, y>: $(result.lhs)")
@@ -212,7 +203,7 @@ function verify_dot_test(
         println("Difference: $(result.diff)")
     end
     
-    return result
+    return isapprox(lhs, rhs, rtol=rtol)
 end
 
 """
@@ -231,21 +222,38 @@ Uses root-finding on the derivative to locate critical points.
 function polynomial_maximum(p::Polynomial, domain::Tuple{T,T}) where T<:Real
     a, b = domain
     
-    # Find all critital points of the polynomial derivative
-    dp = derivative(p)
-    all_critical_points = roots(dp)
+    # Extract real part of coefficients for root finding
+    # This ensures that operations within root-finding are on standard Float types,
+    # making it compatible with ForwardDiff when p's coefficients are Dual numbers.
+    # The locations of critical points depend only on the real part of the coefficients.
+    p_coeffs_values = ForwardDiff.value.(coeffs(p))
+    p_real_coeffs = Polynomial(p_coeffs_values)
+    
+    # Find all critical points of the derivative of the real-coefficient polynomial
+    dp_real_coeffs = derivative(p_real_coeffs)
+    all_critical_points_values = roots(dp_real_coeffs)
     
     # Filter for real roots within the domain
-    critical_points = filter(x -> isreal(x) && a ≤ real(x) ≤ b, all_critical_points)
-    critical_points = real.(critical_points) # Convert from complex to real
+    # Ensure that we are comparing real parts for domain checks if critical points can be complex
+    critical_points_on_domain = filter(x -> isreal(x) && a ≤ real(x) ≤ b, all_critical_points_values)
+    # Convert to Real type; note that real() on a Real number is a no-op.
+    real_critical_points = real.(critical_points_on_domain)
     
-    # Evaluate at critical points and domain endpoints
-    all_points = vcat(a, critical_points, b)
-    values = [p(x) for x in all_points]
+    # Evaluate the original polynomial (p, which might have Dual coefficients) 
+    # at critical points (which are Real) and domain endpoints (which are Real).
+    all_points_to_check = unique(vcat(a, real_critical_points, b)) # Use unique to avoid re-evaluating identical points
+    
+    # Ensure all_points_to_check are within the domain strictly, if filter was too loose or for endpoints.
+    # This step might be redundant if the filter is precise, but good for robustness.
+    # Actually, endpoints must be included regardless, and critical points are already filtered.
+    # So, unique(vcat(a, real_critical_points, b)) is correct.
+
+    values_at_points = [p(x_val) for x_val in all_points_to_check]
     
     # Find the maximum value and its location
-    max_val, idx = findmax(values)
-    max_loc = all_points[idx]
+    # findmax will work with Dual numbers if values_at_points contains them.
+    max_val, idx = findmax(values_at_points)
+    max_loc = all_points_to_check[idx]
     
     return (value=max_val, location=max_loc)
 end
@@ -260,8 +268,16 @@ Tests the operator with exp(x) and verifies the adjoint relationship.
 - Tuple: The operator, result vector, adjoint function, and dot-test results
 """
 function monomial_operator_example()
-    # Create operator for first 3 monomials over [0,1]
-    A = monomial_operator(4, (-Inf, Inf); rtol=1e-10)
+
+    # Test with finite domain
+    bnds = (-5.0, 5.0)
+
+    # Operator
+    A = monomial_operator(4, bnds)
+    
+    # Uniform Prior
+    q(x) = 1.0 / (bnds[2] - bnds[1]) * (bnds[1] ≤ x ≤ bnds[2])
+
     
     # Test function
     f(x) = (1/sqrt(2π)) * exp(-x^2/2)
@@ -269,42 +285,111 @@ function monomial_operator_example()
     # Apply operator to get integrals of monomials against f
     result = A * f
     println("Integrals of x^i * N(0,1) from $(A.domain[1]) to $(A.domain[2]):")
-         for (i, val) in enumerate(result)
+    for (i, val) in enumerate(result)
         # Calculate exact value for the ith moment of N(0,1)
         exact = if iseven(i)
             prod(i-1:-2:1)  # Double factorial (i-1)!!
         else
             0.0
         end
-        println("i=$i: computed=$val, exact=$exact")
+        # println("abs(val-exact)=", abs(val-exact))
+        @test isapprox(val, exact, atol=1e-4, rtol=i*1e-4)
     end
     
     # Test adjoint with coefficient vector
-    y = [1.0, 2.0, 3.0, 4.0]
+    # y = [1.0, 2.0, 3.0, 4.0]
+    y = rand(4)
     g = A' * y
     println("\nEvaluating adjoint (polynomial p(x) = 1 + 2x + 3x² + 4x³) at x=0.5: $(g(0.5))")
     
     # Verify dot-test
-    verify_dot_test(A, f, y, verbose=true)
+    @test verify_dot_test(A, f, y, verbose=false)
     
     # Compute the maximum of g(x) over a finite domain
-    finite_domain = (-5.0, 5.0)
     p = Polynomial(y)  # Convert coefficients to a polynomial
-    max_result = polynomial_maximum(p, finite_domain)
+    max_result = polynomial_maximum(p, bnds)
     println("\nPolynomial maximum:")
     println("Maximum value: $(max_result.value)")
     println("Location: $(max_result.location)")
-   
     
-    dObj(y) = begin z1 = A'*y
-         p = A'y
-         problem = IntegralProblem((x, _) -> p(x)^2, -Inf, Inf)
-         log(solve(problem, QuadGKJL(; rtol=1e-10)).u)
+    # dObj(y) = logexp(A'y | q) = log(∫ q(x)⋅exp((A'y)(x)) dx)
+    dObj(y_vec) = begin
+        p_poly = A'y_vec # p_poly is a Polynomial object
+        # Ensure pmax_val is of a type compatible with later arithmetic (e.g., Float64)
+        T_calc = eltype(y_vec) # Or promote_type(typeof(A.rtol), eltype(y_vec))
+        pmax_val = T_calc(polynomial_maximum(p_poly, bnds).value)
+
+        # For objective value
+        integrand_obj = x -> q(x) * exp(p_poly(x) - pmax_val)
+        sumexp_val = quadgk(integrand_obj, bnds...; atol=A.atol, rtol=A.rtol)[1]
+        obj_val = log(sumexp_val) + pmax_val
+
+        # For analytical gradient numerator (vectorized)
+        # The j-th component of the gradient numerator is ∫ x^j * q(x) * exp(p_poly(x) - pmax_val) dx
+        vector_integrand_grad = x_val -> begin
+            px_at_xval = p_poly(x_val)
+            common_term = q(x_val) * exp(px_at_xval - pmax_val)
+            
+            grad_vector_terms = Vector{T_calc}(undef, A.m)
+            current_x_power = x_val # for x^1
+            for j in 1:A.m
+                grad_vector_terms[j] = common_term * current_x_power
+                if j < A.m # Avoid overflow if x_val is large and A.m is large, though unlikely here
+                    current_x_power *= x_val # for next power x^(j+1)
+                end
+            end
+            return grad_vector_terms
+        end
+        
+        analytical_grad_numerator_vec = quadgk(vector_integrand_grad, bnds...; atol=A.atol, rtol=A.rtol)[1]
+        analytical_grad_vec = analytical_grad_numerator_vec / sumexp_val
+        
+        return obj_val, analytical_grad_vec
     end
-    println(dObj(y))
-    Zygote.gradient(dObj, y)
+
+    obj_val, analytical_grad = dObj(y)
+    println("\nObjective value: $(obj_val)")
+    println("Analytical gradient: $(analytical_grad)")
+
+    # Define a function that returns only the objective for ForwardDiff
+    objective_for_fd(y_val) = begin
+        p_fd = A'y_val
+        pmax_fd = polynomial_maximum(p_fd, bnds).value
+        
+        integrand_fd = x -> q(x)*exp(p_fd(x)-pmax_fd)
+        sumexp_fd = quadgk(integrand_fd, bnds..., atol=A.atol, rtol=A.rtol)[1]
+        obj_fd = log(sumexp_fd)+pmax_fd
+        return obj_fd
+    end
+
+    # Compute numerical gradient using ForwardDiff
+    numerical_grad = ForwardDiff.gradient(objective_for_fd, y)
+    println("Numerical gradient (ForwardDiff): $(numerical_grad)")
+
+    # Compare gradients
+    grad_diff = analytical_grad - numerical_grad
+    println("Difference (Analytical - Numerical): $(grad_diff)")
+    println("Component-wise absolute errors:")
+    for i in 1:length(y)
+        println("  Component $(i): $(abs(grad_diff[i]))")
+    end
+    @test isapprox(analytical_grad, numerical_grad, atol=1e-6) # Add a test for comparison
+
+    println("\n--- Benchmarking Gradient Computations ---")
+
+    println("Benchmarking Analytical Gradient:")
+    # Interpolate dObj as it's a local closure
+    analytical_bench = @benchmarkable $dObj($y)[2] 
+    # run returns a Trial object, median operates on this Trial object
+    trial_analytical = run(analytical_bench, seconds=1.0) 
+    println(median(trial_analytical)) # Get median from the trial results
+
+
+    println("\nBenchmarking ForwardDiff Gradient:")
+    # objective_for_fd is also a local closure and is correctly interpolated here
+    forward_diff_bench = @benchmarkable ForwardDiff.gradient($objective_for_fd, $y)
+    trial_forward_diff = run(forward_diff_bench, seconds=1.0) 
+    println(median(trial_forward_diff)) # Get median from the trial results
+
 end
-# Run the example when this file is executed directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    monomial_operator_example()
-end
+monomial_operator_example()
