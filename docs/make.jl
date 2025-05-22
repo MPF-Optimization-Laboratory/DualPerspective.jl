@@ -6,10 +6,11 @@ using Revise
 using Documenter
 using Documenter.Remotes
 using DocumenterCitations
+using Distributions
 using DualPerspective
 
 # Define macros here.
-const MATHJAX3_MACROS = Dict(
+mathjax3_macros = Dict(
     :tex => Dict(
         :inlineMath => [["\$","\$"], ["\\(","\\)"]],
         :tagSide => "left",
@@ -44,14 +45,15 @@ makedocs(
         canonical = "https://MPF-Optimization-Laboratory.github.io/DualPerspective.jl/stable",
         repolink = "https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl",
         # mathengine = Documenter.KaTeX(KATEX_MACROS)
-        mathengine = Documenter.MathJax3(MATHJAX3_MACROS)
+        mathengine = Documenter.MathJax3(mathjax3_macros)
     ),
     modules = [DualPerspective],
     authors = "Michael P. Friedlander and contributors",
     pages = [
         "Home" => "index.md",
-        "User Guide" => "guide.md",
+        # "User Guide" => "guide.md",
         "Theory" => "theory.md",
+        "Density Estimation" => "density.md",
         "Examples" => "examples.md",
         "API Reference" => "api.md",
         "Development" => "dev.md",

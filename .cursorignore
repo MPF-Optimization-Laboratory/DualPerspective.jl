@@ -1,0 +1,22 @@
+data/
+.nojekyll
+.github/
+
+!scratch/
+
+# Index notes ignored by gitignore
+!notes/
+notes/*.toc
+notes/outdir/
+notes/*.md
+notes/*.tex
+notes/*.log
+notes/*.fls
+notes/*.fdb_latexmk
+notes/*.spl
+notes/*.aux
+notes/*.bbl
+notes/*.bcf
+notes/*.blg
+
+!.cursor/rules/

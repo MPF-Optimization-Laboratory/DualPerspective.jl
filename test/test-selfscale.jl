@@ -1,5 +1,8 @@
 using Test
-using DualPerspective, NLPModels, LinearAlgebra, Random
+using DualPerspective
+using LinearAlgebra
+using Random
+using NLPModels: residual!, jtprod_residual
 
 @testset "SSModel test case" begin
       Random.seed!(1234)

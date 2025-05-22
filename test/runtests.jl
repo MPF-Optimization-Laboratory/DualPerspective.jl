@@ -36,6 +36,10 @@ end
     include("test-sequential-scale.jl")
 end
 
+@testset "Density Estimation Tests" begin
+    include("test-density-estimation.jl")
+end
+
 # # Python binding tests
 # @testset "Python bindings" begin
 #     include("test_python.jl")

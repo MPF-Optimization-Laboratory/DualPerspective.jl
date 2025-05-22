@@ -1,4 +1,8 @@
-using Test, OptimalTransport, Distances, Statistics, LinearAlgebra
+using Test
+using OptimalTransport
+using LinearAlgebra
+using Statistics
+using Distances: SqEuclidean, pairwise
 using DualPerspective
 
 @testset "OTModel correctness relative to sinkhorn" begin
