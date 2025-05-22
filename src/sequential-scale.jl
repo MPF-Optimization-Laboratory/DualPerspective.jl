@@ -93,8 +93,7 @@ An `ExecutionStats` struct containing:
 """
 function solve!(
     kl::DPModel{T},
-    ::SequentialSolve,
-    outer_mode=:newton;
+    ::SequentialSolve;
     t=one(T),
     rtol=DEFAULT_PRECISION(T),
     atol=DEFAULT_PRECISION(T), 
@@ -121,43 +120,20 @@ function solve!(
     # Find optimal t
     start_time = time()
 
-    if outer_mode==:bisection
-        dv!(t) = value!(
-            kl, 
-            t;
-            prods=prods,
-            atol=δ*atol,
-            rtol=δ*rtol,
-            kwargs...
-        )
-
-        #Using root finding
-        t = Roots.find_zero(
-            dv!,
-            t;
-            tracks=tracker,
-            atol=atol,
-            rtol=rtol,
-            verbose=verbose
-        )
-
     #Using Newton solve
-    elseif outer_mode==:newton
-        value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
-            prods=prods,
-            atol=δ*atol,
-            rtol=δ*rtol,
-            kwargs...
-        )
-        stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
-            Optim.Newton(linesearch=LineSearches.BackTracking()), 
-            Optim.Options(x_abstol=atol, x_reltol=rtol))
+    value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
+        prods=prods,
+        atol=δ*atol,
+        rtol=δ*rtol,
+        kwargs...
+    )
+    stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+        Optim.Newton(linesearch=BackTracking()), 
+        Optim.Options(g_abstol=1e-2))
 
-        t = Optim.minimizer(stats)[1]
-        println(t)
-        show(stats)
-
-    end
+    t = Optim.minimizer(stats)[1]
+    println(t)
+    show(stats)
 
     elapsed_time = time() - start_time
 

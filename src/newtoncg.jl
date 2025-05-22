@@ -76,24 +76,6 @@ end
 NLPModels.grad!(kl::DPModel, y, ∇f) = dGrad!(kl, y, ∇f)
 
 """
-Dual objective value and gradient
-"""
-function dObjGrad!(kl::DPModel, ∇f, y)
-    @unpack A, b, λ, C, lse, scale = kl
-    increment!(kl, :neval_jprod)
-    p = grad(lse)
-    ∇f .= -b
-    if λ > 0
-        LinearAlgebra.mul!(∇f, C, y, λ, 1)
-    end
-    LinearAlgebra.mul!(∇f, A, p, scale, 1)
-
-    increment!(kl, :neval_jtprod)
-    d = lseatyc!(kl, y)
-    return scale*d - scale*log(scale) + 0.5λ*dot(y, C, y) - b⋅y 
-end
-
-"""
 Dual objective gradient
 """
 function dHess(kl::DPModel)
@@ -161,12 +143,10 @@ end
 
 function solve!(
     kl::DPModel{T};
-    inner_mode=:newton,
     M=I,
     logging=0,
     max_time::Real=30,
     reset_counters=true,
-    # solver=TrunkSolver(kl),
     kwargs...) where T
    
     # Reset counters
@@ -177,90 +157,36 @@ function solve!(
     #Tracer
     tracer = DataFrame(iter=Int[], dual_obj=T[], r=T[], Δ=T[], Δₐ_Δₚ=T[], cgits=Int[], cgmsg=String[])
 
-    if inner_mode == :trunk
-        # #Callback routine
-        # cb(kl, solver, stats) =
-        #     callback(kl, solver, M, stats, tracer, logging, max_time; kwargs...)
-        
-        # #Call the Trunk solver
-        # trunk_stats = SolverCore.solve!(
-        #     solver, kl; 
-        #     M=M, 
-        #     callback=cb, 
-        #     atol=zero(T), 
-        #     rtol=zero(T), 
-        #     max_time=Float64(max_time)
-        # )
+    f(y) = dObj!(kl, y)
+    fg!(grads, y) = begin dGrad!(kl, y, grads); dObj!(kl, y) end
+    H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-        # primal_solution = kl.scale .* grad(kl.lse)
-        
-        # stats = ExecutionStats(
-        #     trunk_stats.status,
-        #     trunk_stats.elapsed_time,       # elapsed time
-        #     trunk_stats.iter,               # number of iterations
-        #     neval_jprod(kl),                # number of products with A
-        #     neval_jtprod(kl),               # number of products with A'
-        #     pObj!(kl, primal_solution),     # primal objective
-        #     trunk_stats.objective,          # dual objective
-        #     primal_solution,                # primal solution `x`
-        #     (kl.λ).*(trunk_stats.solution), # residual r = λy
-        #     trunk_stats.dual_feas,          # norm of the gradient of the dual objective
-        #     tracer
-        # )
+    newton_stats = newton!(kl.y0, f, fg!, H,
+        linesearch=true,
+        itmax=typemax(Int)-1,
+        time_limit=Float64(max_time),
+        atol=DEFAULT_PRECISION(T),
+        rtol=DEFAULT_PRECISION(T))
 
-    else
-        f(y) = dObj!(kl, y)
-        fg!(grads, y) = dObjGrad!(kl, grads, y)
-        H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
-
-        if inner_mode == :rsfn
-            qn_stats = rsfn!(kl.y0, f, fg!, H,
-                mode=:RNSolver,
-                itmax=typemax(Int)-1,
-                time_limit=Float64(max_time),
-                atol=DEFAULT_PRECISION(T),
-                rtol=DEFAULT_PRECISION(T),
-                linesearch=true)
-
-        elseif inner_mode == :arc
-            qn_stats = arc!(kl.y0, f, fg!, H,
-                itmax=typemax(Int)-1,
-                time_limit=Float64(max_time),
-                atol=DEFAULT_PRECISION(T),
-                rtol=DEFAULT_PRECISION(T))
-
-        elseif inner_mode == :newton
-            qn_stats = newton!(kl.y0, f, fg!, H,
-                posdef=true,
-                linesearch=true,
-                itmax=typemax(Int)-1,
-                time_limit=Float64(max_time),
-                atol=DEFAULT_PRECISION(T),
-                rtol=DEFAULT_PRECISION(T))
-
-        end
-
-        # if show_stats
-        #     show(qn_stats)
-        #     println()
-        # end
-
-        primal_solution = kl.scale .* grad(kl.lse)
-
-        stats = ExecutionStats(
-            qn_stats.converged ? :optimal : :unknown,
-            qn_stats.run_time,
-            qn_stats.iterations,
-            neval_jprod(kl),
-            neval_jprod(kl),
-            pObj!(kl, primal_solution),
-            qn_stats.f_seq[end],
-            primal_solution,
-            (kl.λ).*(kl.y0),
-            qn_stats.g_seq[end],
-            tracer
-        )
+    if logging>0
+        show(newton_stats)
     end
+
+    primal_solution = kl.scale .* grad(kl.lse)
+
+    stats = ExecutionStats(
+        newton_stats.converged ? :optimal : :unknown,
+        newton_stats.run_time,
+        newton_stats.iterations,
+        neval_jprod(kl),
+        neval_jprod(kl),
+        pObj!(kl, primal_solution),
+        newton_stats.f,
+        primal_solution,
+        (kl.λ).*(kl.y0),
+        newton_stats.g,
+        tracer
+    )
 
     return stats
 end
