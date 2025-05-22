@@ -7,18 +7,19 @@ function value!(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
     t = max(t, eps(T))
     @unpack λ, A = kl
     scale!(kl, t)
-    s = solve!(kl; kwargs...)
+    solve!(kl; kwargs...)
     
     # Update product counts
     prods[1] += neval_jprod(kl)
     prods[2] += neval_jtprod(kl)
     
     # Compute derivative of value function
-    y = s.residual/λ
+    residual = ((kl.λ).*(kl.y0))
+    y = residual/λ
     dv = -(lseatyc!(kl, y) - log(t) - 1)
     
     # Set starting point for next iteration
-    update_y0!(kl, s.residual/λ)
+    update_y0!(kl, residual/λ)
     
     return dv
 end
@@ -27,14 +28,15 @@ function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
     @unpack λ, A = kl
 
     scale!(kl, t[1])
-    s = solve!(kl; kwargs...)
+    solve!(kl; kwargs...)
     
     # Update product counts
     prods[1] += neval_jprod(kl)
     prods[2] += neval_jtprod(kl)
 
     #Dual solution
-    y = s.residual/λ
+    residual = ((kl.λ).*(kl.y0))
+    y = residual/λ
 
     #Dual objective value
     f = -dObj!(kl, y)
@@ -59,7 +61,7 @@ function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
     end
 
     # Set starting point for next iteration
-    update_y0!(kl, s.residual/λ)
+    update_y0!(kl, residual/λ)
 
     return f
 end
@@ -107,7 +109,6 @@ function solve!(
     # Initialize counters and trackers
     start_time = time()
     prods = [0, 0]
-    tracker = Roots.Tracks()
     tracer = DataFrame(
         iter=Int[], 
         scale=T[], 
@@ -127,19 +128,15 @@ function solve!(
         rtol=δ*rtol,
         kwargs...
     )
-    stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+    outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
         Optim.Newton(linesearch=BackTracking()), 
         Optim.Options(g_abstol=1e-2))
-
-    t = Optim.minimizer(stats)[1]
-    println(t)
-    show(stats)
 
     elapsed_time = time() - start_time
 
     # Final solve at optimal t
     scale!(kl, t)
-    final_run_stats = solve!(
+    primal_solution, inner_stats = solve!(
         kl;
         atol=δ*atol,
         rtol=δ*rtol,
@@ -148,16 +145,18 @@ function solve!(
     )
 
     stats = ExecutionStats(
-        tracker.convergence_flag == :x_converged ? :optimal : :unknown,
+        Optim.converged(outer_stats),
         time() - start_time,                  # elapsed time
-        tracker.steps,                 # number of iterations
+        Optim.iterations(outer_stats),                 # number of iterations
         prods[1],                      # number of products with A
         prods[2],                      # number of products with A'
-        zero(T),                       # TODO: primal objective
-        final_run_stats.dual_obj,      # dual objective
-        final_run_stats.solution,      # primal solution `x`
-        final_run_stats.residual,      # residual r = λy
-        final_run_stats.optimality,    # norm of gradient of the dual objective
+        pObj!(kl, primal_solution),      # primal objective
+        dObj!(kl, kl.y0),      # dual objective
+        Optim.minimizer(outer_stats)[1],
+        primal_solution,      # primal solution `x`
+        (kl.λ).*(kl.y0),      # residual r = λy
+        Optim.g_residual(outer_stats),
+        inner_stats.g,    # norm of gradient of the dual objective
         tracer                         # tracer to store iteration info
     )
 

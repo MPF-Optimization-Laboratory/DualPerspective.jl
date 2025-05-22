@@ -174,21 +174,7 @@ function solve!(
 
     primal_solution = kl.scale .* grad(kl.lse)
 
-    stats = ExecutionStats(
-        newton_stats.converged ? :optimal : :unknown,
-        newton_stats.run_time,
-        newton_stats.iterations,
-        neval_jprod(kl),
-        neval_jprod(kl),
-        pObj!(kl, primal_solution),
-        newton_stats.f,
-        primal_solution,
-        (kl.λ).*(kl.y0),
-        newton_stats.g,
-        tracer
-    )
-
-    return stats
+    return primal_solution, newton_stats
 end
 const newtoncg = solve!
 
