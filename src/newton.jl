@@ -1,4 +1,4 @@
-mutable struct Stats{I<:Integer, T<:AbstractFloat}
+mutable struct Stats{I<:Integer, T<:AbstractFloat, S<:AbstractVector{T}}
     converged::Bool #whether optimizer has converged
     iterations::I #number of optimizer iterations
     f_evals::I #number of function evaluations
@@ -7,10 +7,11 @@ mutable struct Stats{I<:Integer, T<:AbstractFloat}
     f::T #final function value
     g::T #final gradient norm
     krylov_iterations::T #number of Krylov iterations
+    solution::S
 end
 
 function Stats(type::Type{<:AbstractFloat}=Float64)
-    return Stats(false, 0, 0, 0, 0.0, zero(type), zero(type), zero(type))
+    return Stats(false, 0, 0, 0, 0.0, zero(type), zero(type), zero(type), type[])
 end
 
 function Base.show(io::IO, stats::Stats)

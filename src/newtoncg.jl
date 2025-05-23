@@ -174,7 +174,9 @@ function solve!(
 
     primal_solution = kl.scale .* grad(kl.lse)
 
-    return primal_solution, newton_stats
+    newton_stats.solution = primal_solution
+
+    return newton_stats
 end
 const newtoncg = solve!
 
