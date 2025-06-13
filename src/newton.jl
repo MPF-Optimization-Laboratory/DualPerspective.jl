@@ -31,7 +31,7 @@ elapsed(tic::UInt64) = (time_ns()-tic)/1e9
 Newton solvers
 =#
 function newton!(x::S, f::F1, fg!::F2, H::L; itmax::I, time_limit::T, α::T=1e0, linesearch::Bool=false, atol::T=1e-5, rtol::T=1e-6, krylov_order::Int=0) where {T<:AbstractFloat, S<:AbstractVector{T}, F1, F2, L, I}
-    workspace = krylov_workspace(Val(:symmlq), size(x,1), size(x,1), S)
+    workspace = krylov_workspace(Val(:cg), size(x,1), size(x,1), S)
 
     # if krylov_order == 0
     #     krylov_order = size(x,1)

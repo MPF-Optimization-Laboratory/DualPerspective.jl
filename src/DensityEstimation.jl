@@ -46,7 +46,25 @@ function reconstruct(μvec::Vector, xgrid; λ=1e-6, kwargs...)
     A = moment_operator(xgrid, m)
     model = DPModel(A, b, λ=λ)
     status = solve!(model; kwargs...)
-    display(status)
+
+    stats = DualPerspective.ExecutionStats(
+        status.converged,
+        status.run_time,
+        status.iterations,                 # number of iterations
+        DualPerspective.neval_jprod(model),                # number of products with A
+        DualPerspective.neval_jtprod(model),                    # number of products with A'
+        DualPerspective.pObj!(model, DualPerspective.grad(model.lse)),      # primal objective
+        DualPerspective.dObj!(model, model.y0),      # dual objective
+        1.,
+        status.solution,      # primal solution `x`
+        (model.λ).*(model.y0),      # residual r = λy
+        0.,
+        status.g,    # norm of gradient of the dual objective
+        DualPerspective.DataFrame()                         # tracer to store iteration info
+    )
+
+    display(stats)
+
     return status.solution
 end
 
@@ -57,6 +75,7 @@ function reconstruct(
     kwargs...
 )
     xgrid = range(bnds[1], bnds[2], length=n_points)
+    
     return reconstruct(μvec, xgrid; kwargs...)
 end
 
