@@ -76,7 +76,7 @@ function newton!(x::S, f::F1, fg!::F2, H::L; itmax::I, time_limit::T, α::T=1e0,
         krylov_solve!(workspace, Hv, grads, itmax=krylov_order, timemax=time_limit-time)
 
         if !issolved(workspace)
-            println("WARNING: Solver failure")
+            # println("WARNING: Solver failure")
         end
 
         stats.krylov_iterations += iteration_count(workspace)

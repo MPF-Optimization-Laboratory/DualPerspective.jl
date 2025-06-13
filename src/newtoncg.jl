@@ -147,6 +147,9 @@ function solve!(
     logging=0,
     max_time::Real=30,
     reset_counters=true,
+    atol::T = 10*DEFAULT_PRECISION(T),
+    rtol::T = DEFAULT_PRECISION(T),
+    max_iter::Int = typemax(Int)-1,
     kwargs...) where T
    
     # Reset counters
@@ -163,10 +166,10 @@ function solve!(
 
     newton_stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
-        itmax=typemax(Int)-1,
+        itmax=max_iter,
         time_limit=Float64(max_time),
-        atol=DEFAULT_PRECISION(T),
-        rtol=DEFAULT_PRECISION(T))
+        atol=atol,
+        rtol=rtol)
 
     if logging>0
         show(newton_stats)

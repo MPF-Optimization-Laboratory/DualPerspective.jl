@@ -18,8 +18,10 @@ Compute the moment operator for a given points `x` up to order `m`, for moments 
 """
 function moment_operator(x, m)
    A = zeros(m, length(x))
+#    α = range(0,2,length=m+1)[2:end]
    for k in 1:m
       A[k, :] = x.^k
+    #   A[k,:] = x.^α[k]
    end
    return A
 end

@@ -86,8 +86,10 @@ moments = moments(x -> exp(-x^2/2)/sqrt(2π), 3, bnds=(-1, 1))
 function moments(f::Function, m::Int, bnds=(-Inf, Inf))
     x_min, x_max = bnds
     b = zeros(m)
+    α = range(0,2,length=m+1)[2:end]
     for i in 1:m
         mom(x) = x^i * f(x)
+        # mom(x) = x^α[i] * f(x)
         b[i], _ = quadgk(mom, x_min, x_max)
     end
     return b
@@ -143,16 +145,18 @@ end
 ################################################
 ## Biased Die
 ################################################
+println("Biased Die\n###################")
 p0 = [1/12, 1/12, 1/12, 2/12, 3/12, 4/12]
 x = collect(1:6)
 b = [x'p0] # 1st moment
 p_computed = reconstruct(b, x)
 println("μ from true distribution: $(x'p0)")
-println("μ from estimated distribution: $(x'p_computed)")
+println("μ from estimated distribution: $(x'p_computed)\n")
 
 ################################################
 ## Gaussian Reconstruction
 ################################################
+println("Gaussian\n###################")
 seed!(42)
 fN = Normal(1.0, 0.2)
 fig = density_experiment(fN, 1000, 2, (0, 2), 0.1, "Gaussian")
@@ -161,8 +165,10 @@ display(fig)
 ################################################
 ## Gaussian Mixture (2 components)
 ################################################
+println("Gaussian Mixture (2)\n###################")
 seed!(42)
 fMixture = gaussian_mixture(K=2, means=[1.0, 5.0], vars=[0.5, 2.0], weights=[0.3, 0.7])
+bnds = estimate_mixture_bounds(fMixture)
 fig = density_experiment(
     fMixture,
     100000, # number of samples
@@ -179,6 +185,7 @@ display(fig)
 ################################################
 ## Gaussian Mixture (3 components)
 ################################################
+println("Gaussian Mixture (3)\n###################")
 seed!(42)
 fMixture = gaussian_mixture()
 bnds = estimate_mixture_bounds(fMixture)
@@ -190,7 +197,7 @@ fig = density_experiment(
     0.2, # step size
     "Gaussian Mixture";
     λ=1e-9, # regularization parameter
-    logging=1, # logging
+    logging=0, # logging
     rtol=1e-11, # relative tolerance
 )
 display(fig)
