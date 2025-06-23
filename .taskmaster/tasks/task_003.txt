@@ -1,0 +1,50 @@
+# Task ID: 3
+# Title: Implement Primal Objective Function
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the primal objective function with KL divergence regularization for the DPModel.
+# Details:
+Implement the primal objective function for the regularized relative-entropy problem:
+
+min_{x∈ℝⁿ₊} ⟨c, x⟩ + 1/(2λ)||Ax - b||²_{C⁻¹} + ∑ⱼ xⱼlog(xⱼ/x̄ⱼ)
+
+The implementation should:
+1. Calculate the linear cost term ⟨c, x⟩
+2. Calculate the quadratic penalty term 1/(2λ)||Ax - b||²_{C⁻¹}
+3. Calculate the KL divergence regularization term ∑ⱼ xⱼlog(xⱼ/x̄ⱼ)
+4. Combine these terms with appropriate scaling
+
+```julia
+function primal_objective(model::DPModel, x::AbstractVector)
+    # Linear cost term
+    cost = dot(model.c, x)
+    
+    # Quadratic penalty term
+    residual = model.A * x - model.b
+    penalty = (1.0 / (2.0 * model.λ)) * dot(residual, residual)
+    
+    # KL divergence regularization
+    reg = scaled_kl(x, model.x̄)
+    
+    return cost + penalty + reg
+end
+```
+
+Override the NLPModels.obj function to make this compatible with the AbstractNLPModel interface:
+
+```julia
+function NLPModels.obj(model::DPModel, x::AbstractVector)
+    return primal_objective(model, x)
+end
+```
+
+Ensure the function handles the case where some components of x are zero (boundary of the nonnegative cone).
+
+# Test Strategy:
+Test the primal objective function with:
+1. Simple test problems with known analytical solutions
+2. Verify each component (cost, penalty, regularization) separately
+3. Test with boundary cases (some x components at zero)
+4. Verify consistency with mathematical formulation
+5. Test for numerical stability with various scales of input data

@@ -1,0 +1,77 @@
+# Task ID: 6
+# Title: Implement Primal-from-Dual Solution Mapping
+# Status: pending
+# Dependencies: 4
+# Priority: medium
+# Description: Develop functions to recover primal solutions from dual variables using the optimality conditions.
+# Details:
+Implement functions to recover primal solutions from dual variables using the KKT optimality conditions. This mapping is a key component of the dual perspective approach.
+
+The primal solution can be recovered from dual variables y using:
+x_i = x̄_i * exp(-(c_i + A_i^T y)/λ) / Z
+where Z is a normalization constant.
+
+```julia
+function primal_from_dual(model::DPModel, y::AbstractVector)
+    n = length(model.c)
+    x = similar(model.c)
+    
+    # Compute scaled terms
+    scaled_terms = similar(model.c)
+    for i in 1:n
+        col_i = model.A[:, i]
+        scaled_terms[i] = -(model.c[i] + dot(col_i, y)) / model.λ
+    end
+    
+    # Compute with numerical stability
+    max_term = maximum(scaled_terms)
+    exp_terms = exp.(scaled_terms .- max_term)
+    normalizer = sum(model.x̄ .* exp_terms)
+    
+    # Recover primal variables
+    for i in 1:n
+        x[i] = model.x̄[i] * exp_terms[i] / normalizer
+    end
+    
+    return x
+end
+```
+
+Implement a function to compute the duality gap as a convergence measure:
+
+```julia
+function duality_gap(model::DPModel, x::AbstractVector, y::AbstractVector)
+    primal_obj = primal_objective(model, x)
+    dual_obj = dual_objective(model, y)
+    return primal_obj - dual_obj
+end
+```
+
+Also implement a function to check the KKT conditions:
+
+```julia
+function check_kkt(model::DPModel, x::AbstractVector, y::AbstractVector, tol=1e-6)
+    # Primal feasibility: x ≥ 0
+    primal_feas = all(x .>= -tol)
+    
+    # Stationarity: ∇f(x) + A^T y = 0
+    g = similar(x)
+    grad!(model, x, g)
+    stationarity_resid = norm(g + model.A' * y, Inf)
+    
+    # Complementary slackness: y_i * (Ax - b)_i = 0
+    residual = model.A * x - model.b
+    comp_slack_resid = abs(dot(y, residual))
+    
+    return (primal_feas, stationarity_resid < tol, comp_slack_resid < tol)
+end
+```
+
+# Test Strategy:
+Test the primal-from-dual mapping with:
+1. Verify recovered primal solutions satisfy KKT conditions
+2. Test on problems with known analytical solutions
+3. Verify duality gap approaches zero at convergence
+4. Check numerical stability with ill-conditioned problems
+5. Test with various regularization parameters λ
+6. Verify consistency between primal and dual objectives

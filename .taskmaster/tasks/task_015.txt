@@ -1,0 +1,275 @@
+# Task ID: 15
+# Title: Implement Cross-Language Interfaces
+# Status: pending
+# Dependencies: 1, 3, 4, 5, 6, 7, 8, 9
+# Priority: low
+# Description: Develop interfaces for Python and MATLAB to enable broader accessibility of the package.
+# Details:
+Develop interfaces for Python and MATLAB to enable broader accessibility of the package. These interfaces should provide a subset of the full Julia functionality with a focus on ease of use.
+
+1. Python Interface using PyJulia:
+```python
+# dualperspective.py
+import numpy as np
+from julia import Julia
+from julia import Main as jl
+
+# Initialize Julia
+jl.eval('using DualPerspective')
+
+class DPModel:
+    """Python wrapper for DualPerspective.jl's DPModel"""
+    
+    def __init__(self, A, b, c, lambda_=0.01, x_bar=None):
+        """Initialize a DPModel
+        
+        Parameters
+        ----------
+        A : numpy.ndarray
+            Constraint matrix
+        b : numpy.ndarray
+            Target vector
+        c : numpy.ndarray
+            Cost vector
+        lambda_ : float, optional
+            Regularization parameter, by default 0.01
+        x_bar : numpy.ndarray, optional
+            Reference point, by default ones
+        """
+        # Convert numpy arrays to Julia arrays
+        A_jl = jl.eval(f'{A.tolist()}')
+        b_jl = jl.eval(f'{b.tolist()}')
+        c_jl = jl.eval(f'{c.tolist()}')
+        
+        if x_bar is None:
+            self.model = jl.eval(f'DPModel({A_jl}, {b_jl}, {c_jl}, {lambda_})')
+        else:
+            x_bar_jl = jl.eval(f'{x_bar.tolist()}')
+            self.model = jl.eval(f'DPModel({A_jl}, {b_jl}, {c_jl}, {lambda_}, {x_bar_jl})')
+    
+    def solve(self, x0=None, method='newton_cg', max_iter=100, tol=1e-6):
+        """Solve the optimization problem
+        
+        Parameters
+        ----------
+        x0 : numpy.ndarray, optional
+            Initial point, by default None
+        method : str, optional
+            Solution method, by default 'newton_cg'
+        max_iter : int, optional
+            Maximum iterations, by default 100
+        tol : float, optional
+            Tolerance, by default 1e-6
+            
+        Returns
+        -------
+        numpy.ndarray
+            Optimal solution
+        int
+            Number of iterations
+        float
+            Final gradient norm
+        """
+        if x0 is None:
+            x0 = np.ones(len(self.model.meta.x0))
+        
+        x0_jl = jl.eval(f'{x0.tolist()}')
+        
+        if method == 'newton_cg':
+            result = jl.eval(f'newton_cg({self.model}, {x0_jl}, max_iter={max_iter}, tol={tol})')
+        elif method == 'newton_ls':
+            result = jl.eval(f'newton_ls({self.model}, {x0_jl}, max_iter={max_iter}, tol={tol})')
+        elif method == 'gauss_newton':
+            result = jl.eval(f'gauss_newton({self.model}, {x0_jl}, max_iter={max_iter}, tol={tol})')
+        else:
+            raise ValueError(f"Unknown method: {method}")
+        
+        # Convert result back to numpy
+        x = np.array(result[0])
+        iter_count = int(result[1])
+        norm_g = float(result[2])
+        
+        return x, iter_count, norm_g
+    
+    def objective(self, x):
+        """Compute the objective value
+        
+        Parameters
+        ----------
+        x : numpy.ndarray
+            Point to evaluate
+            
+        Returns
+        -------
+        float
+            Objective value
+        """
+        x_jl = jl.eval(f'{x.tolist()}')
+        return float(jl.eval(f'obj({self.model}, {x_jl})'))
+```
+
+2. MATLAB Interface using MATLAB.jl:
+```matlab
+% DualPerspective.m
+classdef DualPerspective
+    methods (Static)
+        function model = createModel(A, b, c, lambda, x_bar)
+            % Create a DPModel from MATLAB arrays
+            %
+            % Parameters:
+            %   A: Constraint matrix
+            %   b: Target vector
+            %   c: Cost vector
+            %   lambda: Regularization parameter (default: 0.01)
+            %   x_bar: Reference point (default: ones)
+            
+            if nargin < 4
+                lambda = 0.01;
+            end
+            
+            if nargin < 5
+                x_bar = ones(size(c));
+            end
+            
+            % Call Julia function
+            model = struct();
+            model.A = A;
+            model.b = b;
+            model.c = c;
+            model.lambda = lambda;
+            model.x_bar = x_bar;
+            model.julia_model = true; % Flag for internal use
+            
+            % Initialize Julia if needed
+            if ~exist('juliaEval', 'file')
+                error('MATLAB-Julia interface not initialized. Run initJulia() first.');
+            end
+            
+            % Create model in Julia
+            juliaEval(['using DualPerspective; ' ...
+                       'global matlab_model = DPModel(' ...
+                       'reshape([' num2str(A(:)') '], ' num2str(size(A)) '), ' ...
+                       '[' num2str(b') '], ' ...
+                       '[' num2str(c') '], ' ...
+                       num2str(lambda) ', ' ...
+                       '[' num2str(x_bar') '])']);
+        end
+        
+        function [x, iter, norm_g] = solve(model, x0, method, max_iter, tol)
+            % Solve the optimization problem
+            %
+            % Parameters:
+            %   model: Model created with createModel
+            %   x0: Initial point (default: ones)
+            %   method: Solution method (default: 'newton_cg')
+            %   max_iter: Maximum iterations (default: 100)
+            %   tol: Tolerance (default: 1e-6)
+            
+            if ~isfield(model, 'julia_model') || ~model.julia_model
+                error('Invalid model. Use createModel to create a valid model.');
+            end
+            
+            if nargin < 3 || isempty(x0)
+                x0 = ones(size(model.c));
+            end
+            
+            if nargin < 4 || isempty(method)
+                method = 'newton_cg';
+            end
+            
+            if nargin < 5 || isempty(max_iter)
+                max_iter = 100;
+            end
+            
+            if nargin < 6 || isempty(tol)
+                tol = 1e-6;
+            end
+            
+            % Call Julia solver
+            juliaEval(['result = ' method '(matlab_model, ' ...
+                       '[' num2str(x0') '], ' ...
+                       'max_iter=' num2str(max_iter) ', ' ...
+                       'tol=' num2str(tol) ')']);
+            
+            % Get results
+            x = juliaEvalToMATLAB('result[1]');
+            iter = juliaEvalToMATLAB('result[2]');
+            norm_g = juliaEvalToMATLAB('result[3]');
+        end
+        
+        function val = objective(model, x)
+            % Compute the objective value
+            %
+            % Parameters:
+            %   model: Model created with createModel
+            %   x: Point to evaluate
+            
+            if ~isfield(model, 'julia_model') || ~model.julia_model
+                error('Invalid model. Use createModel to create a valid model.');
+            end
+            
+            % Call Julia function
+            juliaEval(['obj_val = obj(matlab_model, [' num2str(x') '])']);
+            val = juliaEvalToMATLAB('obj_val');
+        end
+        
+        function initJulia()
+            % Initialize Julia interface
+            if ~exist('juliaEval', 'file')
+                % Setup Julia path and initialize
+                % ...
+            end
+            
+            % Load DualPerspective.jl
+            juliaEval('using DualPerspective');
+        end
+    end
+end
+```
+
+3. Julia Helper Functions for Interfaces:
+```julia
+# Interface helpers in DualPerspective.jl
+
+# Helper for Python interface
+function solve_from_python(A::Matrix, b::Vector, c::Vector, λ::Real, x̄::Vector, 
+                         x0::Vector, method::Symbol, max_iter::Int, tol::Real)
+    model = DPModel(A, b, c, λ, x̄)
+    
+    if method == :newton_cg
+        return newton_cg(model, x0, max_iter=max_iter, tol=tol)
+    elseif method == :newton_ls
+        return newton_ls(model, x0, max_iter=max_iter, tol=tol)
+    elseif method == :gauss_newton
+        return gauss_newton(model, x0, max_iter=max_iter, tol=tol)
+    else
+        error("Unknown method: $method")
+    end
+end
+
+# Helper for MATLAB interface
+function solve_from_matlab(A::Matrix, b::Vector, c::Vector, λ::Real, x̄::Vector, 
+                         x0::Vector, method::String, max_iter::Int, tol::Real)
+    model = DPModel(A, b, c, λ, x̄)
+    
+    if method == "newton_cg"
+        return newton_cg(model, x0, max_iter=max_iter, tol=tol)
+    elseif method == "newton_ls"
+        return newton_ls(model, x0, max_iter=max_iter, tol=tol)
+    elseif method == "gauss_newton"
+        return gauss_newton(model, x0, max_iter=max_iter, tol=tol)
+    else
+        error("Unknown method: $method")
+    end
+end
+```
+
+# Test Strategy:
+Test the cross-language interfaces with:
+1. Verify Python interface works with various NumPy array types
+2. Test MATLAB interface with different MATLAB matrix formats
+3. Compare results between Julia, Python, and MATLAB implementations
+4. Verify error handling and input validation
+5. Test performance overhead of cross-language calls
+6. Verify documentation and examples in each language
+7. Test installation process in different environments

@@ -1,0 +1,228 @@
+<context>
+# Overview  
+DualPerspective.jl is a Julia package that provides a novel approach to solving regularized optimization problems by reformulating them as instances of the regularized relative-entropy problem. The package transforms various problem classes (nonnegative least-squares, linear programming, optimal transport, and Hausdorff moment recovery) into a unified framework that exploits the conic extension of the probability simplex.
+
+The key innovation is the dual perspective approach that reformulates problems to have globally Lipschitz-smooth and strongly-convex objectives with uniformly bounded Hessian matrices, enabling efficient algorithms with strong convergence guarantees.
+
+# Core Features  
+## Unified Problem Formulation
+- Reformulates various optimization problems as regularized relative-entropy problems
+- Leverages the conic extension of the probability simplex for nonnegative cone constraints
+- Provides a compactified problem formulation that enables efficient solution techniques
+
+## Dual Perspective Model (DPModel)
+- Extends AbstractNLPModel interface for seamless integration with Julia optimization ecosystem
+- Encapsulates data for regularized relative-entropy problems
+- Supports flexible regularization parameters and custom reference points
+
+## Advanced Optimization Algorithms
+- Trust-region Newton methods with quadratic convergence guarantees
+- Gauss-Newton solver with multiple linesearch strategies (Armijo-Goldstein, backtracking)
+- Level-set methods for constrained problems
+- Sequential scaling algorithms for improved numerical stability
+
+## Mathematical Foundations
+- Implements Kullback-Leibler divergence and its perspective transform
+- Provides primal and dual objective functions with analytical gradients and Hessians
+- Includes primal-from-dual solution mapping for recovering original variables
+
+## Cross-Language Support
+- Native Julia implementation for maximum performance
+- Python interface via JuliaCall for broader accessibility
+- MATLAB compatibility for researchers using legacy code
+
+# User Experience  
+## Target Users
+- Researchers in optimization and computational mathematics
+- Machine learning practitioners working with regularized problems
+- Engineers solving large-scale transportation and resource allocation problems
+- Scientists requiring robust solutions to ill-conditioned inverse problems
+
+## Key User Flows
+1. **Problem Setup**: Users define their optimization problem using the DPModel constructor with constraint matrix A, target vector b, and optional parameters
+2. **Algorithm Selection**: Choose appropriate solver based on problem characteristics (Newton methods for smooth problems, Gauss-Newton for least-squares structure)
+3. **Solution Retrieval**: Obtain both primal and dual solutions with convergence diagnostics
+4. **Analysis**: Access detailed convergence metrics, optimality measures, and solution quality indicators
+
+## API Design Principles
+- Intuitive constructors that mirror mathematical notation
+- Consistent interface across different problem types
+- Comprehensive logging and debugging capabilities
+- Integration with Julia's optimization ecosystem (NLPModels.jl)
+</context>
+<PRD>
+# Technical Architecture  
+## System Components
+### Core Models
+- `DPModel`: Main model type extending AbstractNLPModel
+- `OTModel`: Specialized model for optimal transport problems
+- `LPModel`: Linear programming with entropic regularization
+- `SSModel`: Self-scaling model variant
+
+### Objectives and Operations
+- Primal objective function with KL divergence regularization
+- Dual objective function with log-sum-exp operations
+- Value function computation for compactified problems
+- Gradient and Hessian computations with numerical stability
+
+### Solvers
+- Newton-CG: Newton method with conjugate gradient for linear systems
+- Newton-LS: Newton method with linesearch strategies
+- Gauss-Newton: Specialized solver for nonlinear least-squares structure
+- Sequential scaling: Adaptive scaling for improved conditioning
+- Level-set methods: Constraint-aware optimization
+
+### Utilities
+- Log-sum-exp implementations with numerical stability
+- Preconditioners for iterative solvers
+- Linear operators for matrix-free computations
+- Convergence diagnostics and logging
+
+## Data Models
+- Sparse and dense matrix support via SparseArrays.jl
+- Efficient storage of probability distributions
+- Lazy evaluation of Jacobian operators
+- In-place operations for memory efficiency
+
+## Infrastructure Requirements
+- Julia 1.6+ for modern language features
+- NLPModels.jl for optimization interface
+- Krylov.jl for iterative linear solvers
+- LinearOperators.jl for matrix-free operations
+- Logging.jl for configurable output
+- Test infrastructure with comprehensive coverage
+
+# Development Roadmap  
+## Phase 1: Core Functionality Completion
+- Complete implementation of all solver variants
+- Finalize API for DPModel and related types
+- Implement remaining analytical properties (Hessian computations)
+- Add comprehensive error handling and input validation
+- Create extensive unit tests for all components
+
+## Phase 2: Documentation and Theory
+- Complete the theory.md documentation sections:
+  - Convergence analysis with theoretical guarantees
+  - Relationship to interior point and entropic regularization methods
+  - Implementation details and algorithmic choices
+  - Numerical experiments and benchmarks
+- Add docstrings to all exported functions and types
+- Create tutorial notebooks demonstrating key features
+- Write mathematical derivations for key algorithms
+
+## Phase 3: Performance Optimization
+- Profile and optimize hot paths in solver implementations
+- Implement specialized methods for structured problems
+- Add GPU support for large-scale problems
+- Create benchmark suite comparing to state-of-the-art solvers
+- Optimize memory allocation patterns
+
+## Phase 4: Advanced Features
+- Implement warm-start capabilities for sequential problems
+- Add support for box constraints and general convex sets
+- Create adaptive regularization strategies
+- Implement parallel variants for distributed computing
+- Add stochastic/incremental variants for large-scale problems
+
+## Phase 5: Integration and Ecosystem
+- Register package in Julia General registry
+- Create JuMP.jl extension for modeling interface
+- Integrate with Convex.jl for problem specification
+- Add Plots.jl recipes for visualization
+- Create interfaces to popular optimization benchmarks
+
+## Phase 6: Applications and Examples
+- Optimal transport examples with visualization
+- Machine learning applications (regularized regression, classification)
+- Image processing examples (denoising, deblurring)
+- Portfolio optimization with transaction costs
+- Network flow problems with congestion
+
+# Logical Dependency Chain
+## Foundation (Must be completed first)
+1. Core DPModel implementation with proper AbstractNLPModel interface
+2. Basic primal and dual objective functions
+3. Gradient computations with numerical stability
+4. Essential utility functions (log-sum-exp, KL divergence)
+
+## Core Algorithms (Depends on Foundation)
+1. Basic Newton method implementation
+2. Linesearch strategies for globalization
+3. Conjugate gradient for Newton systems
+4. Convergence criteria and stopping rules
+
+## Advanced Solvers (Depends on Core Algorithms)
+1. Gauss-Newton for least-squares structure
+2. Trust-region methods for robustness
+3. Sequential scaling for conditioning
+4. Level-set methods for constraints
+
+## Testing and Validation (Parallel with development)
+1. Unit tests for individual components
+2. Integration tests for complete workflows
+3. Numerical accuracy tests
+4. Performance benchmarks
+
+## Documentation and Examples (After Core Complete)
+1. API documentation with examples
+2. Mathematical theory documentation
+3. Tutorial notebooks
+4. Application examples
+
+## Distribution and Integration (Final Phase)
+1. Package registration
+2. Python interface finalization
+3. Continuous integration setup
+4. Community engagement
+
+# Risks and Mitigations  
+## Technical Challenges
+- **Numerical Stability**: The log-sum-exp operations can suffer from overflow/underflow
+  - Mitigation: Implement robust numerical techniques with careful scaling
+  
+- **Convergence Issues**: Newton methods may fail for poorly conditioned problems
+  - Mitigation: Implement robust globalization strategies and preconditioners
+  
+- **Performance Bottlenecks**: Large-scale problems may be computationally intensive
+  - Mitigation: Profile early and often, implement matrix-free operations
+
+## Algorithm Complexity
+- **Theoretical Guarantees**: Proving convergence for all problem classes
+  - Mitigation: Focus on well-studied cases first, collaborate with theorists
+  
+- **Parameter Selection**: Choosing appropriate regularization parameters
+  - Mitigation: Implement adaptive strategies and provide guidance
+
+## Ecosystem Integration
+- **API Stability**: Changes may break dependent packages
+  - Mitigation: Follow semantic versioning, maintain backwards compatibility
+  
+- **Cross-Language Interface**: Python/MATLAB integration complexity
+  - Mitigation: Start with minimal interface, expand based on user needs
+
+# Appendix  
+## Mathematical Background
+The package implements the regularized relative-entropy problem:
+min_{x∈ℝⁿ₊} ⟨c, x⟩ + 1/(2λ)||Ax - b||²_{C⁻¹} + ∑ⱼ xⱼlog(xⱼ/x̄ⱼ)
+
+Key insight: ℝⁿ₊ = ⋃_{τ≥0} τΔⁿ where Δⁿ is the probability simplex
+
+## Related Work
+- Interior point methods for conic programming
+- Entropic regularization in optimal transport
+- Proximal methods for composite optimization
+- Trust-region methods for nonlinear optimization
+
+## Performance Targets
+- Solve medium-scale problems (n~10⁴) in seconds
+- Handle sparse problems with millions of variables
+- Achieve 1e-8 relative accuracy for well-conditioned problems
+- Scale linearly with problem size for structured problems
+
+## Testing Strategy
+- Unit tests achieving >90% code coverage
+- Integration tests for complete workflows
+- Stress tests for numerical stability
+- Performance regression tests
+- Comparison with established solvers (MOSEK, Gurobi for applicable problems)
+</PRD> 

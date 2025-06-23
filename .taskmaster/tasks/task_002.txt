@@ -1,0 +1,52 @@
+# Task ID: 2
+# Title: Implement Basic Utility Functions
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Develop essential utility functions for numerical stability, including log-sum-exp operations and Kullback-Leibler divergence calculations.
+# Details:
+Implement the following utility functions with numerical stability considerations:
+
+1. Numerically stable log-sum-exp:
+```julia
+function logsumexp(x::AbstractVector)
+    u = maximum(x)
+    return u + log(sum(exp.(x .- u)))
+end
+```
+
+2. Kullback-Leibler divergence between probability distributions:
+```julia
+function kl_divergence(p::AbstractVector, q::AbstractVector)
+    result = 0.0
+    for (pi, qi) in zip(p, q)
+        if pi > 0
+            result += pi * log(pi / qi)
+        end
+    end
+    return result
+end
+```
+
+3. Scaled KL divergence for the regularization term:
+```julia
+function scaled_kl(x::AbstractVector, x̄::AbstractVector)
+    sum(xi > 0 ? xi * log(xi / x̄i) : 0.0 for (xi, x̄i) in zip(x, x̄))
+end
+```
+
+4. Safe logarithm and division operations:
+```julia
+safe_log(x) = x > 0 ? log(x) : -Inf
+safe_div(x, y) = y != 0 ? x / y : (x == 0 ? 0.0 : Inf * sign(x))
+```
+
+Ensure all functions handle edge cases appropriately and maintain numerical stability.
+
+# Test Strategy:
+Test utility functions with:
+1. Normal input ranges
+2. Edge cases (zeros, very small values, very large values)
+3. Verify against known analytical results
+4. Test for numerical stability with ill-conditioned inputs
+5. Benchmark performance against naive implementations

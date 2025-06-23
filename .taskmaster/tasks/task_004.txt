@@ -1,0 +1,63 @@
+# Task ID: 4
+# Title: Implement Dual Objective Function
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the dual objective function with log-sum-exp operations for the DPModel.
+# Details:
+Implement the dual objective function for the regularized relative-entropy problem. The dual formulation involves log-sum-exp operations and is key to the dual perspective approach.
+
+The dual objective has the form:
+-bᵀy - λ * log(∑ᵢ x̄ᵢ * exp(-(cᵢ + Aᵢᵀy)/λ))
+
+where Aᵢ is the i-th column of A.
+
+```julia
+function dual_objective(model::DPModel, y::AbstractVector)
+    # Linear term
+    linear_term = -dot(model.b, y)
+    
+    # Log-sum-exp term with numerical stability
+    scaled_terms = similar(model.c)
+    for i in 1:length(model.c)
+        # Calculate -(cᵢ + Aᵢᵀy)/λ with column extraction optimized for sparse/dense cases
+        col_i = model.A[:, i]
+        scaled_terms[i] = -(model.c[i] + dot(col_i, y)) / model.λ
+    end
+    
+    # Use the numerically stable logsumexp implementation
+    lse_term = model.λ * (logsumexp(scaled_terms) + log(sum(model.x̄)))
+    
+    return linear_term - lse_term
+end
+```
+
+Implement an additional function to compute the gradient of the dual objective:
+
+```julia
+function dual_gradient(model::DPModel, y::AbstractVector)
+    # Compute intermediate values for the gradient
+    scaled_terms = similar(model.c)
+    for i in 1:length(model.c)
+        col_i = model.A[:, i]
+        scaled_terms[i] = -(model.c[i] + dot(col_i, y)) / model.λ
+    end
+    
+    # Compute probabilities from dual variables
+    max_term = maximum(scaled_terms)
+    exp_terms = exp.(scaled_terms .- max_term)
+    normalizer = sum(model.x̄ .* exp_terms)
+    probs = model.x̄ .* exp_terms ./ normalizer
+    
+    # Compute gradient: -b + A*probs
+    return -model.b + model.A * probs
+end
+```
+
+# Test Strategy:
+Test the dual objective function with:
+1. Verify dual objective values against known analytical solutions
+2. Check gradient calculations using finite differences
+3. Verify the duality gap on simple problems
+4. Test numerical stability with ill-conditioned problems
+5. Verify that primal solutions recovered from dual variables satisfy KKT conditions

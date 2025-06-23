@@ -1,0 +1,154 @@
+# Task ID: 13
+# Title: Implement Numerical Stability Enhancements
+# Status: pending
+# Dependencies: 2, 3, 4
+# Priority: high
+# Description: Develop robust numerical techniques for log-sum-exp operations and other numerically sensitive computations.
+# Details:
+Implement robust numerical techniques for log-sum-exp operations, KL divergence calculations, and other numerically sensitive computations. These enhancements are critical for solving ill-conditioned problems reliably.
+
+1. Enhanced Log-Sum-Exp Implementation:
+```julia
+function logsumexp(x::AbstractVector)
+    # Standard approach with maximum shift
+    u = maximum(x)
+    if isinf(u) && u < 0
+        return -Inf  # All inputs are -Inf
+    end
+    return u + log(sum(exp.(x .- u)))
+end
+
+# Specialized version for weighted log-sum-exp
+function logsumexp(x::AbstractVector, w::AbstractVector)
+    @assert length(x) == length(w) "Dimension mismatch"
+    
+    # Find maximum for numerical stability
+    u = maximum(x)
+    if isinf(u) && u < 0
+        return -Inf  # All inputs are -Inf
+    end
+    
+    # Compute weighted sum with stability
+    s = sum(w[i] * exp(x[i] - u) for i in 1:length(x) if !isinf(x[i]) || x[i] > 0)
+    return u + log(s)
+end
+
+# Log-sum-exp for matrices (useful for optimal transport)
+function logsumexp(X::AbstractMatrix; dims=nothing)
+    if dims === nothing
+        return logsumexp(vec(X))
+    else
+        u = maximum(X, dims=dims)
+        return u .+ log.(sum(exp.(X .- u), dims=dims))
+    end
+end
+```
+
+2. Robust KL Divergence Calculation:
+```julia
+function kl_divergence(p::AbstractVector, q::AbstractVector)
+    @assert length(p) == length(q) "Dimension mismatch"
+    @assert all(p .>= 0) && all(q .>= 0) "Inputs must be non-negative"
+    
+    result = 0.0
+    for i in 1:length(p)
+        if p[i] > 0
+            if q[i] > 0
+                result += p[i] * log(p[i] / q[i])
+            else
+                return Inf  # KL divergence is infinite if q[i]=0 and p[i]>0
+            end
+        end
+        # If p[i]=0, the contribution is 0 by convention
+    end
+    return result
+end
+
+# Regularized KL divergence to handle zeros
+function regularized_kl(p::AbstractVector, q::AbstractVector, ε=1e-10)
+    p_reg = p .+ ε
+    q_reg = q .+ ε
+    
+    # Normalize to maintain sum=1 property
+    p_reg ./= sum(p_reg)
+    q_reg ./= sum(q_reg)
+    
+    return kl_divergence(p_reg, q_reg)
+end
+```
+
+3. Stable Computation of Gradients and Hessians:
+```julia
+function stable_gradient!(model::DPModel, x::AbstractVector, g::AbstractVector)
+    # Linear cost term gradient
+    g .= model.c
+    
+    # Quadratic penalty term gradient
+    residual = model.A * x - model.b
+    penalty_grad = (1.0 / model.λ) * (model.A' * residual)
+    g .+= penalty_grad
+    
+    # KL divergence regularization gradient with stability
+    for i in 1:length(x)
+        if x[i] > 1e-14
+            g[i] += log(max(x[i], 1e-14) / model.x̄[i]) + 1
+        else
+            # Handle boundary case
+            g[i] += -20.0  # Approximation of log(very small) for numerical stability
+        end
+    end
+    
+    return g
+end
+
+function stable_hessian_product!(model::DPModel, x::AbstractVector, v::AbstractVector, Hv::AbstractVector)
+    # Quadratic penalty term Hessian-vector product
+    Av = model.A * v
+    penalty_hv = (1.0 / model.λ) * (model.A' * Av)
+    
+    # KL divergence regularization Hessian-vector product with stability
+    for i in 1:length(x)
+        if x[i] > 1e-14
+            Hv[i] = penalty_hv[i] + (v[i] / max(x[i], 1e-14))
+        else
+            # Handle boundary case
+            Hv[i] = penalty_hv[i] + 1e14 * v[i]  # Large but finite value
+        end
+    end
+    
+    return Hv
+end
+```
+
+4. Scaling and Preconditioning:
+```julia
+function equilibrate_problem!(model::DPModel)
+    m, n = size(model.A)
+    
+    # Compute row and column norms
+    row_norms = [norm(model.A[i,:]) for i in 1:m]
+    col_norms = [norm(model.A[:,j]) for j in 1:n]
+    
+    # Create scaling matrices
+    D_r = Diagonal(1.0 ./ max.(row_norms, 1e-10))
+    D_c = Diagonal(1.0 ./ max.(col_norms, 1e-10))
+    
+    # Scale the problem data
+    model.A = D_r * model.A * D_c
+    model.b = D_r * model.b
+    model.c = D_c * model.c
+    model.x̄ = D_c * model.x̄
+    
+    return model
+end
+```
+
+# Test Strategy:
+Test the numerical stability enhancements with:
+1. Verify log-sum-exp with extreme values (very large positive/negative)
+2. Test KL divergence with distributions containing zeros
+3. Verify gradient and Hessian computations near the boundary of the feasible region
+4. Test scaling and preconditioning on ill-conditioned problems
+5. Verify solution quality on problems with widely varying scales
+6. Benchmark performance against naive implementations
+7. Test with deliberately challenging numerical examples

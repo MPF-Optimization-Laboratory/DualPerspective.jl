@@ -1,0 +1,115 @@
+# Task ID: 11
+# Title: Implement Level-Set Methods for Constrained Problems
+# Status: pending
+# Dependencies: 7, 8
+# Priority: medium
+# Description: Develop level-set methods for solving constrained optimization problems within the dual perspective framework.
+# Details:
+Implement level-set methods for solving constrained optimization problems within the dual perspective framework. Level-set methods are particularly useful for problems with constraints on the objective value or other complex constraints.
+
+```julia
+function level_set_method(model::DPModel, x0::AbstractVector, target_value::Real; 
+                        max_iter=100,
+                        tol=1e-6,
+                        inner_solver=:newton_cg,
+                        verbose=false)
+    x = copy(x0)
+    n = length(x)
+    
+    # Define the level-set function: f(x) - target_value
+    function level_function(model, x)
+        return obj(model, x) - target_value
+    end
+    
+    # Define the gradient of the level-set function
+    function level_gradient!(model, x, g)
+        grad!(model, x, g)
+        return g
+    end
+    
+    # Initialize
+    iter = 0
+    g = similar(x)
+    level_gradient!(model, x, g)
+    level_value = level_function(model, x)
+    norm_g = norm(g)
+    
+    while iter < max_iter && abs(level_value) > tol && norm_g > tol
+        # Compute search direction using projected gradient
+        p = -g
+        
+        # Ensure search direction maintains feasibility
+        for i in 1:n
+            if x[i] <= 0 && p[i] < 0
+                p[i] = 0.0
+            end
+        end
+        
+        # Normalize search direction
+        p_norm = norm(p)
+        if p_norm > 0
+            p ./= p_norm
+        else
+            # No feasible descent direction
+            break
+        end
+        
+        # Line search along the level set
+        alpha = 1.0
+        fx = obj(model, x)
+        
+        # Backtracking line search
+        while alpha > 1e-10
+            x_new = x + alpha * p
+            # Project to ensure nonnegativity
+            x_new .= max.(0.0, x_new)
+            fx_new = obj(model, x_new)
+            level_new = fx_new - target_value
+            
+            # Accept if we're moving closer to the level set
+            if abs(level_new) < abs(level_value) * (1.0 - 1e-4 * alpha)
+                x .= x_new
+                level_value = level_new
+                break
+            end
+            alpha *= 0.5
+        end
+        
+        # Update gradient and check convergence
+        level_gradient!(model, x, g)
+        norm_g = norm(g)
+        iter += 1
+        
+        if verbose
+            println("Iteration $iter: obj = $(obj(model, x)), level = $level_value, |g| = $norm_g")
+        end
+    end
+    
+    return x, iter, level_value
+end
+```
+
+Implement a variant for solving problems with multiple constraints:
+
+```julia
+function constrained_level_set(model::DPModel, x0::AbstractVector, constraint_funcs, constraint_grads, constraint_vals; 
+                             max_iter=100,
+                             tol=1e-6,
+                             verbose=false)
+    # Implementation for problems with multiple constraints
+    # Uses a merit function approach combining the constraints
+    # ...
+    
+    return x, iter, constraint_violations
+end
+```
+
+# Test Strategy:
+Test the level-set methods with:
+1. Problems with known target objective values
+2. Verify convergence to the level set
+3. Test with various constraint types and target values
+4. Verify solution quality using KKT conditions
+5. Benchmark performance against penalty methods
+6. Test the handling of infeasible target values
+7. Verify numerical stability for problems with multiple constraints
