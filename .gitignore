@@ -1,4 +1,6 @@
-DualPerspective.code-workspace
+*.code-workspace
+.taskmaster
+.cursorignore
 Manifest.toml
 derivations_files
 .DS_Store
