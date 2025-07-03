@@ -1,29 +1,32 @@
 mutable struct ExecutionStats{T<:AbstractFloat, V<:AbstractVector{T}, S<:AbstractArray{T}, DF}
-    status::Symbol
+    converged::Bool
     elapsed_time::T
     iter::Int
     neval_jprod::Int
     neval_jtprod::Int
     primal_obj::T
     dual_obj::T
+    scale::T
     solution::S
     residual::V
-    optimality::T
+    inner_optimality::T
+    outer_optimality::T
     tracer::DF
 end
 
+function mvps(s::ExecutionStats) return s.neval_jprod + s.neval_jtprod end
+function residual(s::ExecutionStats) return norm(s.residual) end
+
 function Base.show(io::IO, s::ExecutionStats)
-    @printf(io, "\n")
-    if s.status == :max_iter 
-        @printf(io, "Maximum number of iterations reached\n")
-    elseif s.status == :optimal
-        @printf(io, "Optimality conditions satisfied\n")
-    end
     nprods = s.neval_jprod + s.neval_jtprod
+    @printf(io, "Converged:                   %s\n", s.converged ? "true" : "false")
     @printf(io, "Products with A and A': %9d\n"  , nprods)
-    @printf(io, "Time elapsed (sec)    : %9.1f\n", s.elapsed_time)
-    @printf(io, "||Ax-b||₂             : %9.1e\n", norm(s.residual))
-    @printf(io, "Optimality            : %9.1e\n", s.optimality)
+    @printf(io, "Time elapsed (sec):     %9.1f\n", s.elapsed_time)
+    @printf(io, "Outer Iterations:       %9d\n"  , s.iter)
+    @printf(io, "Inner Optimality:       %9.1e\n", s.inner_optimality)
+    @printf(io, "Outer Optimality:       %9.1e\n", s.outer_optimality)
+    @printf(io, "Residual ||Ax-b||₂:     %9.1e\n", norm(s.residual))
+    @printf(io, "Scale:                  %9.1e\n", s.scale)
 end
 
 """
@@ -34,10 +37,11 @@ Generate a random PT model. Arguments:
 - `n`: number of columns of the matrix `A`
 - `λ`: regularization parameter (default: 1e-3)
 """
-function randDPModel(m, n; λ=1e-3)
+function randDPModel(m, n; scale=1e0, λ=1e-3)
     A = randn(m, n)
     xs = rand(n)
     xs ./= sum(xs)
+    xs .*= scale
     b = A * xs
     return DPModel(A, b, λ=λ)
 end

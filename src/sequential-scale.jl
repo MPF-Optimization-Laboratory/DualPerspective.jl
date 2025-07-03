@@ -1,30 +1,69 @@
 """
-    value!(kl::DPModel, τ; kwargs...) -> (v, dv)
+    value!(kl::DPModel, t; kwargs...)
 
-Compute the dual objective value `v` and its derivative `dv` with respect to the scaling parameter `τ`.
-
-!!! note "Minimum scaling parameter"
-    The scaling parameter `τ` is clamped to at least `eps(T)` to avoid numerical issues.
+Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
 """
-function value!(kl::DPModel{T}, τ; prods=[0, 0], kwargs...) where T
-    τ = max(τ, eps(T))
+function value!(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
+    t = max(t, eps(T))
     @unpack λ, A = kl
-    scale!(kl, τ)
-    s = solve!(kl; kwargs...)
-    v = -s.dual_obj
+    scale!(kl, t)
+    solve!(kl; kwargs...)
     
     # Update product counts
     prods[1] += neval_jprod(kl)
     prods[2] += neval_jtprod(kl)
     
     # Compute derivative of value function
-    y = s.residual/λ
-    dv = -lseatyc!(kl, y) + log(τ) + 1
+    residual = ((kl.λ).*(kl.y0))
+    y = residual/λ
+    dv = -(lseatyc!(kl, y) - log(t) - 1)
     
     # Set starting point for next iteration
-    update_y0!(kl, y)
+    update_y0!(kl, residual/λ)
     
-    return v, dv
+    return dv
+end
+
+function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
+    @unpack λ, A = kl
+
+    scale!(kl, t[1])
+    solve!(kl; kwargs...)
+    
+    # Update product counts
+    prods[1] += neval_jprod(kl)
+    prods[2] += neval_jtprod(kl)
+
+    #Dual solution
+    residual = ((kl.λ).*(kl.y0))
+    y = residual/λ
+
+    #Dual objective value
+    f = -dObj!(kl, y)
+    
+    # Compute derivative of value function
+    if !isnothing(dv)
+        dv .= -(lseatyc!(kl, y) - log(t[1]) - 1)
+    end
+
+    #Hessian
+    if !isnothing(hv)
+        b = A*grad(kl.lse)
+
+        hv!(res, z) = dHess_prod!(kl, z, res)
+        m = size(A,1)
+        H = LinearOperator(Float64, m, m, true, true, hv!)
+
+        ω,_ = cg(H, b)
+
+        hv[1,1] = 1/t[1] + b'*ω
+        # hv[1,1] = 1/t[1] + (1/kl.λ)*norm(b)^2
+    end
+
+    # Set starting point for next iteration
+    update_y0!(kl, residual/λ)
+
+    return f
 end
 
 struct SequentialSolve end
@@ -70,7 +109,6 @@ function solve!(
     # Initialize counters and trackers
     start_time = time()
     prods = [0, 0]
-    tracker = Roots.Tracks()
     tracer = DataFrame(
         iter=Int[], 
         scale=T[], 
@@ -80,24 +118,25 @@ function solve!(
         cgmsg=String[]
     )
 
-    # Find optimal t using root finding
-    function dv!(t)
-        _, dv = value!(kl, t; prods=prods, atol=δ*atol, rtol=δ*rtol, kwargs...)
-        return dv
-    end
+    # Find optimal t
+    start_time = time()
 
-    t = Roots.find_zero(
-        dv!,
-        t;
-        tracks=tracker,
-        atol=atol,
-        rtol=rtol,
-        verbose=verbose
+    #Using Newton solve
+    value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
+        prods=prods,
+        atol=δ*atol,
+        rtol=δ*rtol,
+        kwargs...
     )
+    outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+        Optim.Newton(linesearch=BackTracking()), 
+        Optim.Options(g_abstol=1e-2))
+
+    elapsed_time = time() - start_time
 
     # Final solve at optimal t
     scale!(kl, t)
-    final_run_stats = solve!(
+    inner_stats = solve!(
         kl;
         atol=δ*atol,
         rtol=δ*rtol,
@@ -105,17 +144,21 @@ function solve!(
         kwargs...
     )
 
+    primal_solution = inner_stats.solution
+
     stats = ExecutionStats(
-        tracker.convergence_flag == :x_converged ? :optimal : :unknown,
+        Optim.converged(outer_stats),
         time() - start_time,                  # elapsed time
-        tracker.steps,                 # number of iterations
+        Optim.iterations(outer_stats),                 # number of iterations
         prods[1],                      # number of products with A
         prods[2],                      # number of products with A'
-        zero(T),                       # TODO: primal objective
-        final_run_stats.dual_obj,      # dual objective
-        final_run_stats.solution,      # primal solution `x`
-        final_run_stats.residual,      # residual r = λy
-        final_run_stats.optimality,    # norm of gradient of the dual objective
+        pObj!(kl, primal_solution),      # primal objective
+        dObj!(kl, kl.y0),      # dual objective
+        Optim.minimizer(outer_stats)[1],
+        primal_solution,      # primal solution `x`
+        (kl.λ).*(kl.y0),      # residual r = λy
+        Optim.g_residual(outer_stats),
+        inner_stats.g,    # norm of gradient of the dual objective
         tracer                         # tracer to store iteration info
     )
 
