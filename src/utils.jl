@@ -14,6 +14,9 @@ mutable struct ExecutionStats{T<:AbstractFloat, V<:AbstractVector{T}, S<:Abstrac
     tracer::DF
 end
 
+function mvps(s::ExecutionStats) return s.neval_jprod + s.neval_jtprod end
+function residual(s::ExecutionStats) return norm(s.residual) end
+
 function Base.show(io::IO, s::ExecutionStats)
     nprods = s.neval_jprod + s.neval_jtprod
     @printf(io, "Converged:                   %s\n", s.converged ? "true" : "false")
