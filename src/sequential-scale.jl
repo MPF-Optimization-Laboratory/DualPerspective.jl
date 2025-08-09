@@ -136,7 +136,7 @@ function solve!(
 
     # Final solve at optimal t
     scale!(kl, t)
-    inner_stats = solve!(
+    inner_stats, primal_solution = solve!(
         kl;
         atol=δ*atol,
         rtol=δ*rtol,
@@ -144,7 +144,7 @@ function solve!(
         kwargs...
     )
 
-    primal_solution = inner_stats.solution
+    # primal_solution = inner_stats.solution
 
     stats = ExecutionStats(
         Optim.converged(outer_stats),

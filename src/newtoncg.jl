@@ -164,22 +164,33 @@ function solve!(
     fg!(grads, y) = begin dGrad!(kl, y, grads); dObj!(kl, y) end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-    newton_stats = newton!(kl.y0, f, fg!, H,
+    stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
         itmax=max_iter,
         time_limit=Float64(max_time),
         atol=atol,
         rtol=rtol)
 
+
+    # stats = optimize!(kl.y0, f, fg!, H, :newton;
+    #                     itmax=max_iter,
+    #                     time_limit=Float64(max_time),
+    #                     atol=atol,
+    #                     rtol=rtol, M=0., linesearch=true, posdef=true)
+
+    # stats = optimize!(kl.y0, f, fg!, H, :rsfn;
+    #                     itmax=max_iter,
+    #                     time_limit=Float64(max_time),
+    #                     atol=1e-4,
+    #                     rtol=1e-3, M=1e-8, linesearch=true)
+
     if logging>0
-        show(newton_stats)
+        show(stats)
     end
 
     primal_solution = kl.scale .* grad(kl.lse)
 
-    newton_stats.solution = primal_solution
-
-    return newton_stats
+    return stats, primal_solution
 end
 const newtoncg = solve!
 

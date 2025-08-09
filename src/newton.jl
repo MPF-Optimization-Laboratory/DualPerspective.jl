@@ -5,13 +5,12 @@ mutable struct Stats{I<:Integer, T<:AbstractFloat, S<:AbstractVector{T}}
     hvp_evals::I #number of hvp evaluations
     run_time::Float64 #iteration runtime
     f::T #final function value
-    g::T #final gradient norm
+    g_seq::S #final gradient norm
     krylov_iterations::T #number of Krylov iterations
-    solution::S
 end
 
 function Stats(type::Type{<:AbstractFloat}=Float64)
-    return Stats(false, 0, 0, 0, 0.0, zero(type), zero(type), zero(type), type[])
+    return Stats(false, 0, 0, 0, 0.0, zero(type), type[], zero(type))
 end
 
 function Base.show(io::IO, stats::Stats)
@@ -21,7 +20,7 @@ function Base.show(io::IO, stats::Stats)
                 "Hvp Evals: ", stats.hvp_evals, '\n',
                 "Run Time (s): ", stats.run_time, '\n',
                 "Minimum: ", stats.f, '\n',
-                "Gradient Norm: ", stats.g, '\n',
+                "Gradient Norm: ", stats.g[end], '\n',
                 "Total Krylov Iterations: ", stats.krylov_iterations, '\n')
 end
 
@@ -53,6 +52,8 @@ function newton!(x::S, f::F1, fg!::F2, H::L; itmax::I, time_limit::T, α::T=1e0,
     #compute function and gradient
     fval = fg!(grads, x)
     g_norm = norm(grads)
+
+    push!(stats.g_seq, g_norm)
 
     tol = atol + rtol*g_norm
 
@@ -109,6 +110,8 @@ function newton!(x::S, f::F1, fg!::F2, H::L; itmax::I, time_limit::T, α::T=1e0,
         fval = fg!(grads, x)
         g_norm = norm(grads)
 
+        push!(stats.g_seq, g_norm)
+
         #update hvp operations
         nprod += Hv.nprod
 
@@ -122,7 +125,7 @@ function newton!(x::S, f::F1, fg!::F2, H::L; itmax::I, time_limit::T, α::T=1e0,
     stats.hvp_evals = nprod
     stats.run_time = elapsed(tic)
     stats.f = fval
-    stats.g = g_norm
+    # stats.g = g_norm
 
     return stats
 end

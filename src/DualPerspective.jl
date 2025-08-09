@@ -14,6 +14,7 @@ using LineSearches: BackTracking
 import Optim
 using Krylov: cg, krylov_workspace, krylov_solve!, issolved, iteration_count
 using LinearOperators: LinearOperator
+using QuasiNewton: optimize!
 
 export DPModel, SSModel, OTModel, LPModel
 export SSTrunkLS, SequentialSolve
