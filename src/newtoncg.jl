@@ -103,6 +103,7 @@ function dHess_prod!(kl::DPModel, z, Hz)
     increment!(kl, :neval_jprod)
     increment!(kl, :neval_jtprod)
     g = grad(lse)
+    println("Hessian norm: ", norm(Diagonal(g) - g * g'))
     LinearAlgebra.mul!(w, A', z)                 # w =                  A'z
     w .= g.*(w .- (g⋅w))           # w =        (G - gg')(A'z)
     LinearAlgebra.mul!(Hz, A, w, scale, 0)       # v = scale*A(G - gg')(A'z)

@@ -107,6 +107,7 @@ function obj!(lse::LogExp, p)
     Σ = sum_all_but(g, maxind)
     f = log(Σ + q[maxind]) + maxval
     @. g = g / (Σ + q[maxind])
+    println("Gradient nnz: ", sum(g .!= 0.))
     return f
 end
 
