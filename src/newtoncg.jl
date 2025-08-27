@@ -161,16 +161,26 @@ function solve!(
     tracer = DataFrame(iter=Int[], dual_obj=T[], r=T[], Δ=T[], Δₐ_Δₚ=T[], cgits=Int[], cgmsg=String[])
 
     f(y) = dObj!(kl, y)
-    fg!(grads, y) = begin dGrad!(kl, y, grads); dObj!(kl, y) end
+    fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
+
+    ϵ = 1.0
+    function callback()
+        α = 2
+        if ϵ>1e-8
+            kl.c ./= α
+            kl.λ /= α
+            ϵ /= α
+        end
+    end
 
     stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
         itmax=max_iter,
         time_limit=Float64(max_time),
-        atol=atol,
-        rtol=rtol)
-
+        atol=1e-8,
+        rtol=1e-8,
+        callback=callback)
 
     # stats = optimize!(kl.y0, f, fg!, H, :newton;
     #                     itmax=max_iter,
@@ -183,6 +193,30 @@ function solve!(
     #                     time_limit=Float64(max_time),
     #                     atol=1e-4,
     #                     rtol=1e-3, M=1e-8, linesearch=true)
+
+    # function fg!(f, g, y)
+    #     if !isnothing(g)
+    #         dGrad!(kl, y, g)
+    #     end
+    #     if !isnothing(f)
+    #         return dObj!(kl, y)
+    #     end
+    # end
+
+    # status = optimize(Optim.only_fg!(fg!), kl.y0, LBFGS(linesearch=BackTracking()), Optim.Options(store_trace=true))
+
+    # show(status)
+
+    # stats = Stats(Optim.converged(status),
+    #                 Optim.iterations(status),
+    #                 0,
+    #                 0,
+    #                 0.,
+    #                 0.,
+    #                 Optim.g_norm_trace(status),
+    #                 0.)
+
+    println("ϵ: ", ϵ)
 
     if logging>0
         show(stats)
