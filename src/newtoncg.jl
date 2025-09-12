@@ -141,11 +141,27 @@ function pObj!(kl::DPModel, x)
     return (1/(2λ)) * quadratic_term + dot(c, x) + kl_divergence(x, q)
 end
 
+function max12(x)
+    max1 = -Inf
+    max2 = -Inf
+
+    for xi in x
+        if xi > max1
+            max2 = max1
+            max1 = xi
+        elseif xi > max2 && xi != max1
+            max2 = xi
+        end
+    end
+
+    return max1, max2
+end
+
 function solve!(
     kl::DPModel{T};
     M=I,
     logging=0,
-    max_time::Real=30,
+    max_time::Real=60,
     reset_counters=true,
     atol::T = 10*DEFAULT_PRECISION(T),
     rtol::T = DEFAULT_PRECISION(T),
@@ -164,22 +180,58 @@ function solve!(
     fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-    ϵ = 1.0
+    # ϵ = 1.
+    # m1, m2 = max12(-kl.c)
+    # r1 = m2 - m1
+
+    # ϵ = abs(r1 / log(eps(ϵ)^(2/3)))
+
+    # ϵ *= 10
+
+    # println(ϵ)
+
+    ϵ = norm(kl.c)
+    kl.c ./= ϵ
+    kl.λ *= ϵ
+
+    println(ϵ)
+
     function callback()
         α = 2
-        if ϵ>1e-8
+        if ϵ>1e-16
             kl.c ./= α
             kl.λ /= α
             ϵ /= α
         end
     end
 
+    # ϵ = 1.0
+    # c = copy(kl.c)
+    # λ = kl.λ
+    # h = log(eps(ϵ)^2/3)
+    # function callback()
+    #     if ϵ>1e-16
+    #         mn, mx = extrema(-c)
+    #         r1 = mx - mn
+
+    #         mn, mx = extrema(kl.A'*kl.y0)
+    #         r2 = mx - mn
+
+    #         ϵ = abs(r1 / (h - r2))
+    #         println(ϵ)
+
+    #         kl.c = c ./ ϵ
+
+    #         kl.λ = λ*ϵ
+    #     end
+    # end
+
     stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
         itmax=max_iter,
         time_limit=Float64(max_time),
         atol=1e-8,
-        rtol=1e-8,
+        rtol=1e-6,
         callback=callback)
 
     # stats = optimize!(kl.y0, f, fg!, H, :newton;
