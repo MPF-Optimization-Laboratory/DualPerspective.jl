@@ -141,6 +141,18 @@ function pObj!(kl::DPModel, x)
     return (1/(2λ)) * quadratic_term + dot(c, x) + kl_divergence(x, q)
 end
 
+####
+#Utility functions for testing ϵ homotopy
+
+function softmax(y, c, A, q)
+    z = -c + A'*y
+    zmax = maximum(z)
+    z = z .- zmax
+    e = exp.(z)
+
+    return (q.*e)/dot(q,e)
+end
+
 function max12(x)
     max1 = -Inf
     max2 = -Inf
@@ -156,6 +168,32 @@ function max12(x)
 
     return max1, max2
 end
+
+function ϵ_search(kl, c)
+
+    ϵ = 1e-8
+    h = log(eps(ϵ)^(2/3))
+
+    z = kl.A'*kl.y0 - c/ϵ
+
+    m1, m2 = max12(z)
+
+    diff = m2 - m1
+
+    while diff < h && ϵ < 1e8
+        ϵ *= 2.
+
+        z = kl.A'*kl.y0 - c/ϵ
+
+        m1, m2 = max12(z)
+
+        diff = m2 - m1
+    end
+
+    return ϵ
+end
+
+####
 
 function solve!(
     kl::DPModel{T};
@@ -180,55 +218,46 @@ function solve!(
     fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-    # ϵ = 1.
-    # m1, m2 = max12(-kl.c)
-    # r1 = m2 - m1
+    #ϵ callback option 1
+    # ϵ = ϵ_search(kl, kl.c)
+    # println("Initial ϵ: ", ϵ)
 
-    # ϵ = abs(r1 / log(eps(ϵ)^(2/3)))
+    # kl.c ./= ϵ
+    # kl.λ *= ϵ
 
-    # ϵ *= 10
-
-    # println(ϵ)
-
-    ϵ = norm(kl.c)
-    kl.c ./= ϵ
-    kl.λ *= ϵ
-
-    println(ϵ)
-
-    function callback()
-        α = 2
-        if ϵ>1e-16
-            kl.c ./= α
-            kl.λ /= α
-            ϵ /= α
-        end
-    end
-
-    # ϵ = 1.0
-    # c = copy(kl.c)
-    # λ = kl.λ
-    # h = log(eps(ϵ)^2/3)
     # function callback()
-    #     if ϵ>1e-16
-    #         mn, mx = extrema(-c)
-    #         r1 = mx - mn
-
-    #         mn, mx = extrema(kl.A'*kl.y0)
-    #         r2 = mx - mn
-
-    #         ϵ = abs(r1 / (h - r2))
-    #         println(ϵ)
-
-    #         kl.c = c ./ ϵ
-
-    #         kl.λ = λ*ϵ
+    #     α = 2
+    #     if ϵ>1e-8
+    #         kl.c ./= α
+    #         kl.λ /= α
+    #         ϵ /= α
     #     end
+    #     println("ϵ: ", ϵ)
     # end
 
+    #ϵ callback option 2
+    c = deepcopy(kl.c)
+    λ = kl.λ
+
+    ϵ = ϵ_search(kl, c)
+    println("Initial ϵ: ", ϵ)
+
+    kl.c = c/ϵ
+    kl.λ = λ*ϵ
+
+    function callback()
+        ϵ = ϵ_search(kl, c)
+
+        println("ϵ: ", ϵ)
+
+        kl.c = c/ϵ
+        kl.λ = λ*ϵ
+    end
+
+    #Solve
     stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
-        itmax=max_iter,
+        itmax=20,
         time_limit=Float64(max_time),
         atol=1e-8,
         rtol=1e-6,
@@ -268,7 +297,7 @@ function solve!(
     #                 Optim.g_norm_trace(status),
     #                 0.)
 
-    println("ϵ: ", ϵ)
+    println("Final ϵ: ", ϵ)
 
     if logging>0
         show(stats)
