@@ -170,7 +170,6 @@ function max12(x)
 end
 
 function ϵ_search(kl, c)
-
     ϵ = 1e-8
     h = log(eps(ϵ)^(2/3))
 
@@ -218,46 +217,55 @@ function solve!(
     fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-    #ϵ callback option 1
-    # ϵ = ϵ_search(kl, kl.c)
-    # println("Initial ϵ: ", ϵ)
+    ϵ = 1.
+    callback = Returns(nothing)
 
-    # kl.c ./= ϵ
-    # kl.λ *= ϵ
+    if !iszero(kl.c)
+        #ϵ callback option 1
+        # ϵ = ϵ_search(kl, kl.c)
+        ϵ = norm(kl.c)
+        # ϵ = 1.
+        println("Initial ϵ: ", ϵ)
 
-    # function callback()
-    #     α = 2
-    #     if ϵ>1e-8
-    #         kl.c ./= α
-    #         kl.λ /= α
-    #         ϵ /= α
-    #     end
-    #     println("ϵ: ", ϵ)
-    # end
+        kl.c ./= ϵ
+        kl.λ *= ϵ
 
-    #ϵ callback option 2
-    c = deepcopy(kl.c)
-    λ = kl.λ
+        function ϵ_homotopy()
+            α = 2
+            if ϵ>1e-8
+                kl.c ./= α
+                kl.λ /= α
+                ϵ /= α
+            end
+            println("ϵ: ", ϵ)
+        end
 
-    ϵ = ϵ_search(kl, c)
-    println("Initial ϵ: ", ϵ)
+        #ϵ callback option 2
+        # c = copy(kl.c)
+        # λ = kl.λ
 
-    kl.c = c/ϵ
-    kl.λ = λ*ϵ
+        # ϵ = ϵ_search(kl, c)
+        # println("Initial ϵ: ", ϵ)
 
-    function callback()
-        ϵ = ϵ_search(kl, c)
+        # kl.c = c/ϵ
+        # kl.λ = λ*ϵ
 
-        println("ϵ: ", ϵ)
+        # function ϵ_homotopy()
+        #     ϵ = ϵ_search(kl, c)
 
-        kl.c = c/ϵ
-        kl.λ = λ*ϵ
+        #     println("ϵ: ", ϵ)
+
+        #     kl.c = c/ϵ
+        #     kl.λ = λ*ϵ
+        # end
+
+        callback = ϵ_homotopy
     end
 
     #Solve
     stats = newton!(kl.y0, f, fg!, H,
         linesearch=true,
-        itmax=20,
+        itmax=max_iter,
         time_limit=Float64(max_time),
         atol=1e-8,
         rtol=1e-6,
