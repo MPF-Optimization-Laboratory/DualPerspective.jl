@@ -267,7 +267,7 @@ function solve!(
         linesearch=true,
         itmax=max_iter,
         time_limit=Float64(max_time),
-        atol=1e-8,
+        atol=1e-5,
         rtol=1e-6,
         callback=callback)
 

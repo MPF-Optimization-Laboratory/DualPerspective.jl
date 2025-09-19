@@ -20,7 +20,7 @@ function Base.show(io::IO, stats::Stats)
                 "Hvp Evals: ", stats.hvp_evals, '\n',
                 "Run Time (s): ", stats.run_time, '\n',
                 "Minimum: ", stats.f, '\n',
-                "Gradient Norm: ", stats.g[end], '\n',
+                "Gradient Norm: ", stats.g_seq[end], '\n',
                 "Total Krylov Iterations: ", stats.krylov_iterations, '\n')
 end
 
