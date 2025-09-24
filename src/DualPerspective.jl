@@ -12,7 +12,7 @@ using Pkg
 using LineSearches: BackTracking
 
 import Optim
-using Krylov: cg, krylov_workspace, krylov_solve!, issolved, iteration_count
+using Krylov: cg_lanczos, krylov_workspace, krylov_solve!, issolved, iteration_count
 using LinearOperators: LinearOperator
 # using QuasiNewton: optimize!
 using Optim

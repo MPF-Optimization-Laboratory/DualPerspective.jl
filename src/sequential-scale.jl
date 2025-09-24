@@ -54,10 +54,10 @@ function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
         m = size(A,1)
         H = LinearOperator(Float64, m, m, true, true, hv!)
 
-        ω,_ = cg(H, b)
+        ω,_ = cg_lanczos(H, b)
 
         hv[1,1] = 1/t[1] + b'*ω
-        # hv[1,1] = 1/t[1] + (1/kl.λ)*norm(b)^2
+        # hv[1,1] = 1/t[1] + (1/kl.λ)*norm(b)^2 #NOTE: This was that old approximation that didn't work
     end
 
     # Set starting point for next iteration
@@ -98,9 +98,7 @@ function solve!(
     ::SequentialSolve;
     t=one(T),
     rtol=DEFAULT_PRECISION(T),
-    atol=DEFAULT_PRECISION(T), 
-    # xatol=DEFAULT_PRECISION(T), # Removed 28 Apr 2025: not clear how to set this
-    # xrtol=DEFAULT_PRECISION(T),
+    atol=DEFAULT_PRECISION(T),
     δ=1e-2,
     verbose=false,
     kwargs...
@@ -123,16 +121,16 @@ function solve!(
 
     #Using Newton solve
     value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
-        prods=prods,
-        atol=δ*atol,
-        rtol=δ*rtol,
-        kwargs...
-    )
-    outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
-        Optim.Newton(linesearch=BackTracking()), 
-        Optim.Options(g_abstol=1e-2))
+                                    prods=prods,
+                                    atol=δ*atol,
+                                    rtol=δ*rtol,
+                                    kwargs...)
 
-    elapsed_time = time() - start_time
+    outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+                                    Optim.Newton(linesearch=BackTracking()), 
+                                    Optim.Options(g_abstol=1e-2))
+
+    verbose ? display(outer_stats) : nothing
 
     # Final solve at optimal t
     scale!(kl, t)
@@ -144,22 +142,20 @@ function solve!(
         kwargs...
     )
 
-    # primal_solution = inner_stats.solution
-
     stats = ExecutionStats(
         Optim.converged(outer_stats),
-        time() - start_time,                  # elapsed time
-        Optim.iterations(outer_stats),                 # number of iterations
-        prods[1],                      # number of products with A
-        prods[2],                      # number of products with A'
+        time() - start_time,             # elapsed time
+        Optim.iterations(outer_stats),   # number of iterations
+        prods[1],                        # number of products with A
+        prods[2],                        # number of products with A'
         pObj!(kl, primal_solution),      # primal objective
-        dObj!(kl, kl.y0),      # dual objective
-        Optim.minimizer(outer_stats)[1],
-        primal_solution,      # primal solution `x`
-        (kl.λ).*(kl.y0),      # residual r = λy
-        Optim.g_residual(outer_stats),
-        inner_stats.g,    # norm of gradient of the dual objective
-        tracer                         # tracer to store iteration info
+        dObj!(kl, kl.y0),                # dual objective
+        Optim.minimizer(outer_stats)[1], # optimal scale
+        primal_solution,                 # primal solution `x`
+        (kl.λ).*(kl.y0),                 # residual r = λy
+        inner_stats.g_seq[end],          # norm of gradient of the dual solve 'y'
+        Optim.g_residual(outer_stats),   # norm of gradient of the scale solve 't'
+        tracer                           # tracer to store iteration info
     )
 
     return stats

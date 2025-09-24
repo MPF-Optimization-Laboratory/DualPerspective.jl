@@ -196,13 +196,12 @@ end
 
 function solve!(
     kl::DPModel{T};
-    M=I,
     logging=0,
     max_time::Real=60,
     reset_counters=true,
-    atol::T = 10*DEFAULT_PRECISION(T),
-    rtol::T = DEFAULT_PRECISION(T),
-    max_iter::Int = typemax(Int)-1,
+    atol::T=1e-2*DEFAULT_PRECISION(T),
+    rtol::T=1e-2*DEFAULT_PRECISION(T),
+    max_iter::Int=typemax(Int)-1,
     kwargs...) where T
    
     # Reset counters
@@ -225,7 +224,7 @@ function solve!(
         # ϵ = ϵ_search(kl, kl.c)
         ϵ = norm(kl.c)
         # ϵ = 1.
-        println("Initial ϵ: ", ϵ)
+        # println("Initial ϵ: ", ϵ)
 
         kl.c ./= ϵ
         kl.λ *= ϵ
@@ -237,7 +236,7 @@ function solve!(
                 kl.λ /= α
                 ϵ /= α
             end
-            println("ϵ: ", ϵ)
+            # println("ϵ: ", ϵ)
         end
 
         #ϵ callback option 2
@@ -267,8 +266,8 @@ function solve!(
         linesearch=true,
         itmax=max_iter,
         time_limit=Float64(max_time),
-        atol=1e-5,
-        rtol=1e-6,
+        atol=atol,
+        rtol=rtol,
         callback=callback)
 
     # stats = optimize!(kl.y0, f, fg!, H, :newton;
@@ -283,29 +282,7 @@ function solve!(
     #                     atol=1e-4,
     #                     rtol=1e-3, M=1e-8, linesearch=true)
 
-    # function fg!(f, g, y)
-    #     if !isnothing(g)
-    #         dGrad!(kl, y, g)
-    #     end
-    #     if !isnothing(f)
-    #         return dObj!(kl, y)
-    #     end
-    # end
-
-    # status = optimize(Optim.only_fg!(fg!), kl.y0, LBFGS(linesearch=BackTracking()), Optim.Options(store_trace=true))
-
-    # show(status)
-
-    # stats = Stats(Optim.converged(status),
-    #                 Optim.iterations(status),
-    #                 0,
-    #                 0,
-    #                 0.,
-    #                 0.,
-    #                 Optim.g_norm_trace(status),
-    #                 0.)
-
-    println("Final ϵ: ", ϵ)
+    # println("Final ϵ: ", ϵ)
 
     if logging>0
         show(stats)
@@ -315,7 +292,8 @@ function solve!(
 
     return stats, primal_solution
 end
-const newtoncg = solve!
+
+# const newtoncg = solve!
 
 # function callback(
 #     kl::DPModel{T},
