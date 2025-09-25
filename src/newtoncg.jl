@@ -217,6 +217,8 @@ function solve!(
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
     ϵ = 1.
+    c = copy(kl.c)
+    λ = kl.λ
     callback = Returns(nothing)
 
     if !iszero(kl.c)
@@ -269,6 +271,8 @@ function solve!(
         atol=atol,
         rtol=rtol,
         callback=callback)
+
+    if !iszero(kl.c) kl.c .= c; kl.λ = λ end
 
     # stats = optimize!(kl.y0, f, fg!, H, :newton;
     #                     itmax=max_iter,

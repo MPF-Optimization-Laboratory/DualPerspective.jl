@@ -128,7 +128,7 @@ function solve!(
 
     outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
                                     Optim.Newton(linesearch=BackTracking()), 
-                                    Optim.Options(g_abstol=1e-2))
+                                    Optim.Options(g_abstol=1e-8))
 
     verbose ? display(outer_stats) : nothing
 
