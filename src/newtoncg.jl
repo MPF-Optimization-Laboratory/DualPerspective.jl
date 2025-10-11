@@ -216,9 +216,9 @@ function solve!(
     fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
-    ϵ = 1.
-    c = copy(kl.c)
-    λ = kl.λ
+    # ϵ = 1.0
+    # c = copy(kl.c)
+    # λ = kl.λ
     callback = Returns(nothing)
 
     if !iszero(kl.c)
@@ -233,7 +233,7 @@ function solve!(
 
         function ϵ_homotopy()
             α = 2
-            if ϵ>1e-8
+            if (false || iszero(c)) && ϵ>1e-8
                 kl.c ./= α
                 kl.λ /= α
                 ϵ /= α
@@ -264,15 +264,15 @@ function solve!(
     end
 
     #Solve
-    stats = newton!(kl.y0, f, fg!, H,
-        linesearch=true,
-        itmax=max_iter,
-        time_limit=Float64(max_time),
-        atol=atol,
-        rtol=rtol,
-        callback=callback)
+    stats = newton!(kl.y0, f, fg!, H;
+                    linesearch=true,
+                    itmax=max_iter,
+                    time_limit=Float64(max_time),
+                    atol=atol,
+                    rtol=rtol,
+                    callback=callback)
 
-    if !iszero(kl.c) kl.c .= c; kl.λ = λ end
+    # if !iszero(c) kl.c .= c; kl.λ = λ end
 
     # stats = optimize!(kl.y0, f, fg!, H, :newton;
     #                     itmax=max_iter,
@@ -290,6 +290,7 @@ function solve!(
 
     if logging>0
         show(stats)
+        println()
     end
 
     primal_solution = kl.scale .* grad(kl.lse)

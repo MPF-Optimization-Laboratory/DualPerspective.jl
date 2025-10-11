@@ -24,19 +24,22 @@ function value!(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
     return dv
 end
 
-function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
-    @unpack λ, A = kl
+function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
 
     scale!(kl, t[1])
     solve!(kl; kwargs...)
+
+    @unpack λ, A = kl
     
     # Update product counts
     prods[1] += neval_jprod(kl)
     prods[2] += neval_jtprod(kl)
 
     #Dual solution
-    residual = ((kl.λ).*(kl.y0))
-    y = residual/λ
+    # residual = ((kl.λ).*(kl.y0))
+    # y = residual/λ
+
+    y = kl.y0
 
     #Dual objective value
     f = -dObj!(kl, y)
@@ -52,16 +55,17 @@ function value!(kl::DPModel, f, dv, hv, t; prods=[0,0], kwargs...)
 
         hv!(res, z) = dHess_prod!(kl, z, res)
         m = size(A,1)
-        H = LinearOperator(Float64, m, m, true, true, hv!)
+        H = LinearOperator(T, m, m, true, true, hv!)
 
         ω,_ = cg_lanczos(H, b)
 
         hv[1,1] = 1/t[1] + b'*ω
-        # hv[1,1] = 1/t[1] + (1/kl.λ)*norm(b)^2 #NOTE: This was that old approximation that didn't work
     end
 
     # Set starting point for next iteration
-    update_y0!(kl, residual/λ)
+    # update_y0!(kl, residual/λ)
+
+    println(t)
 
     return f
 end
@@ -97,8 +101,8 @@ function solve!(
     kl::DPModel{T},
     ::SequentialSolve;
     t=one(T),
-    rtol=DEFAULT_PRECISION(T),
     atol=DEFAULT_PRECISION(T),
+    rtol=DEFAULT_PRECISION(T),
     δ=1e-2,
     verbose=false,
     kwargs...
@@ -126,9 +130,15 @@ function solve!(
                                     rtol=δ*rtol,
                                     kwargs...)
 
+    c_ = copy(kl.c)
+    λ_ = kl.λ
+    kl_reset(args...) = begin kl.c .= c_; kl.λ = λ_; return false end
+
     outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
                                     Optim.Newton(linesearch=BackTracking()), 
-                                    Optim.Options(g_abstol=1e-8))
+                                    Optim.Options(g_abstol=1e-1, show_trace=true))
+
+    t = Optim.minimizer(outer_stats)[1]
 
     verbose ? display(outer_stats) : nothing
 
@@ -142,15 +152,17 @@ function solve!(
         kwargs...
     )
 
+    kl_reset()
+
     stats = ExecutionStats(
         Optim.converged(outer_stats),
         time() - start_time,             # elapsed time
         Optim.iterations(outer_stats),   # number of iterations
-        prods[1],                        # number of products with A
-        prods[2],                        # number of products with A'
+        prods[1]+neval_jprod(kl),        # number of products with A
+        prods[2]+neval_jtprod(kl),       # number of products with A'
         pObj!(kl, primal_solution),      # primal objective
         dObj!(kl, kl.y0),                # dual objective
-        Optim.minimizer(outer_stats)[1], # optimal scale
+        t,                               # optimal scale
         primal_solution,                 # primal solution `x`
         (kl.λ).*(kl.y0),                 # residual r = λy
         inner_stats.g_seq[end],          # norm of gradient of the dual solve 'y'
