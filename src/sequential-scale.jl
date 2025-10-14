@@ -26,24 +26,27 @@ end
 
 function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
     println(t)
+    println(f)
 
-    scale!(kl, t[1])
-    solve!(kl; kwargs...)
+    if !isnothing(f)
+        scale!(kl, t[1])
+        solve!(kl; kwargs...)
 
-    @unpack λ, A = kl
-    
-    # Update product counts
-    prods[1] += neval_jprod(kl)
-    prods[2] += neval_jtprod(kl)
+        @unpack λ, A = kl
+        
+        # Update product counts
+        prods[1] += neval_jprod(kl)
+        prods[2] += neval_jtprod(kl)
 
-    #Dual solution
-    # residual = ((kl.λ).*(kl.y0))
-    # y = residual/λ
+        #Dual solution
+        # residual = ((kl.λ).*(kl.y0))
+        # y = residual/λ
 
-    y = kl.y0
-
-    #Dual objective value
-    f = -dObj!(kl, y)
+        y = kl.y0
+        # println(extrema(y))
+        #Dual objective value
+        f = -dObj!(kl, y)
+    end
     
     # Compute derivative of value function
     if !isnothing(dv)
@@ -135,8 +138,12 @@ function solve!(
     cb(args...) = begin kl.y0 .= zero(T); kl_reset(); return false end
 
     outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
-                                    Optim.Newton(linesearch=BackTracking()), 
+                                    Optim.Newton(alphaguess = 0.95, linesearch=Static()), 
                                     Optim.Options(g_abstol=1e-1, show_trace=false, callback=cb))
+
+    # outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
+    #                                 Optim.GradientDescent(linesearch=BackTracking()), 
+    #                                 Optim.Options(g_abstol=1e-1, show_trace=false, callback=cb))
 
     t = Optim.minimizer(outer_stats)[1]
 

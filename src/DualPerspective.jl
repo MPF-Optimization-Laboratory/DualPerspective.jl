@@ -9,7 +9,7 @@ using NLPModels
 using LinearOperators
 using SolverCore
 using Pkg
-using LineSearches: BackTracking
+using LineSearches: BackTracking, Static
 
 import Optim
 using Krylov: cg, cg_lanczos, krylov_workspace, krylov_solve!, issolved, iteration_count
