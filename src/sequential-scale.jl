@@ -25,6 +25,7 @@ function value!(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
 end
 
 function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
+    println(t)
 
     scale!(kl, t[1])
     solve!(kl; kwargs...)
@@ -46,7 +47,7 @@ function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
     
     # Compute derivative of value function
     if !isnothing(dv)
-        dv .= -(lseatyc!(kl, y) - log(t[1]) - 1)
+        dv .= -lseatyc!(kl, y) + log(t[1]) + 1
     end
 
     #Hessian
@@ -64,8 +65,6 @@ function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
 
     # Set starting point for next iteration
     # update_y0!(kl, residual/λ)
-
-    println(t)
 
     return f
 end
@@ -126,17 +125,18 @@ function solve!(
     #Using Newton solve
     value_fgh!(f, g, h, t) = value!(kl, f, g, h, t;
                                     prods=prods,
-                                    atol=δ*atol,
-                                    rtol=δ*rtol,
+                                    atol=1e-4,
+                                    rtol=1e-4,
                                     kwargs...)
 
     c_ = copy(kl.c)
     λ_ = kl.λ
     kl_reset(args...) = begin kl.c .= c_; kl.λ = λ_; return false end
+    cb(args...) = begin kl.y0 .= zero(T); kl_reset(); return false end
 
     outer_stats = Optim.optimize(Optim.only_fgh!(value_fgh!), [t], 
                                     Optim.Newton(linesearch=BackTracking()), 
-                                    Optim.Options(g_abstol=1e-1, show_trace=true))
+                                    Optim.Options(g_abstol=1e-1, show_trace=false, callback=cb))
 
     t = Optim.minimizer(outer_stats)[1]
 

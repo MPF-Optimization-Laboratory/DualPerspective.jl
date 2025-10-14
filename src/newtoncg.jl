@@ -219,49 +219,49 @@ function solve!(
     # ϵ = 1.0
     # c = copy(kl.c)
     # λ = kl.λ
-    callback = Returns(nothing)
+    # callback = Returns(nothing)
 
-    if !iszero(kl.c)
-        #ϵ callback option 1
-        # ϵ = ϵ_search(kl, kl.c)
-        ϵ = norm(kl.c)
-        # ϵ = 1.
-        # println("Initial ϵ: ", ϵ)
+    # if !iszero(kl.c)
+    #     #ϵ callback option 1
+    #     # ϵ = ϵ_search(kl, kl.c)
+    #     ϵ = norm(kl.c)
+    #     # ϵ = 1.
+    #     # println("Initial ϵ: ", ϵ)
 
-        kl.c ./= ϵ
-        kl.λ *= ϵ
+    #     kl.c ./= ϵ
+    #     kl.λ *= ϵ
 
-        function ϵ_homotopy()
-            α = 2
-            if (false || iszero(c)) && ϵ>1e-8
-                kl.c ./= α
-                kl.λ /= α
-                ϵ /= α
-            end
-            # println("ϵ: ", ϵ)
-        end
+    #     function ϵ_homotopy()
+    #         α = 2
+    #         if (false || iszero(c)) && ϵ>1e-8
+    #             kl.c ./= α
+    #             kl.λ /= α
+    #             ϵ /= α
+    #         end
+    #         # println("ϵ: ", ϵ)
+    #     end
 
-        #ϵ callback option 2
-        # c = copy(kl.c)
-        # λ = kl.λ
+    #     #ϵ callback option 2
+    #     # c = copy(kl.c)
+    #     # λ = kl.λ
 
-        # ϵ = ϵ_search(kl, c)
-        # println("Initial ϵ: ", ϵ)
+    #     # ϵ = ϵ_search(kl, c)
+    #     # println("Initial ϵ: ", ϵ)
 
-        # kl.c = c/ϵ
-        # kl.λ = λ*ϵ
+    #     # kl.c = c/ϵ
+    #     # kl.λ = λ*ϵ
 
-        # function ϵ_homotopy()
-        #     ϵ = ϵ_search(kl, c)
+    #     # function ϵ_homotopy()
+    #     #     ϵ = ϵ_search(kl, c)
 
-        #     println("ϵ: ", ϵ)
+    #     #     println("ϵ: ", ϵ)
 
-        #     kl.c = c/ϵ
-        #     kl.λ = λ*ϵ
-        # end
+    #     #     kl.c = c/ϵ
+    #     #     kl.λ = λ*ϵ
+    #     # end
 
-        callback = ϵ_homotopy
-    end
+    #     callback = ϵ_homotopy
+    # end
 
     #Solve
     stats = newton!(kl.y0, f, fg!, H;
@@ -269,8 +269,7 @@ function solve!(
                     itmax=max_iter,
                     time_limit=Float64(max_time),
                     atol=atol,
-                    rtol=rtol,
-                    callback=callback)
+                    rtol=rtol)
 
     # if !iszero(c) kl.c .= c; kl.λ = λ end
 
