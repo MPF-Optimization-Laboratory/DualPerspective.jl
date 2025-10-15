@@ -196,12 +196,12 @@ end
 
 function solve!(
     kl::DPModel{T};
-    logging=0,
     max_time::Real=60,
     reset_counters=true,
-    atol::T=1e-2*DEFAULT_PRECISION(T),
-    rtol::T=1e-2*DEFAULT_PRECISION(T),
+    atol::T=DEFAULT_PRECISION(T),
+    rtol::T=DEFAULT_PRECISION(T),
     max_iter::Int=typemax(Int)-1,
+    logging=false,
     kwargs...) where T
    
     # Reset counters
@@ -213,7 +213,7 @@ function solve!(
     tracer = DataFrame(iter=Int[], dual_obj=T[], r=T[], Δ=T[], Δₐ_Δₚ=T[], cgits=Int[], cgmsg=String[])
 
     f(y) = dObj!(kl, y)
-    fg!(grads, y) = begin v=dObj!(kl,y); dGrad!(kl, y, grads); return v end
+    fg!(grads, y) = begin v=dObj!(kl, y); dGrad!(kl, y, grads); return v end
     H = x -> LinearOperator(T, length(kl.y0), length(kl.y0), true, true, (res, z) -> dHess_prod!(kl, z, res))
 
     # ϵ = 1.0
@@ -287,7 +287,7 @@ function solve!(
 
     # println("Final ϵ: ", ϵ)
 
-    if logging>0
+    if logging
         show(stats)
         println()
     end
