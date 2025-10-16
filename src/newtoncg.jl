@@ -233,7 +233,7 @@ function solve!(
 
     #     function ϵ_homotopy()
     #         α = 2
-    #         if (false || iszero(c)) && ϵ>1e-8
+    #         if (true || iszero(c)) && ϵ>1e-8
     #             kl.c ./= α
     #             kl.λ /= α
     #             ϵ /= α

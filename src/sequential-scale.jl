@@ -161,14 +161,35 @@ function solve!(
         cgits=Int[],
         cgmsg=String[]
     )
-
-    # Find optimal t
     start_time = time()
 
+    #ϵ homotopy
+    ϵ = 1.0
     c_ = copy(kl.c)
     λ_ = kl.λ
+    homotopy = Returns(nothing)
 
-    kl_reset() = begin kl.y0 .= zero(T); kl.c .= c_; kl.λ = λ_; return false end
+    if !iszero(kl.c)
+        ϵ = norm(kl.c)
+
+        kl.c ./= ϵ
+        kl.λ *= ϵ
+
+        function ϵ_homotopy()
+            α = 2
+            if true && ϵ>1e-8
+                kl.c ./= α
+                kl.λ /= α
+                ϵ /= α
+            end
+        end
+
+        homotopy = ϵ_homotopy
+    end
+
+    kl_reset() = begin kl.y0 .= zero(T); homotopy(); return false end
+
+    #Find optimal scale
 
     #Using custom Newton solve
     t_vec = [t]
@@ -178,18 +199,17 @@ function solve!(
     H(t) = value_H(kl, t; atol=1e-4, rtol=1e-4, kwargs...)
 
     outer_stats = newton!(t_vec, f, fg!, H;
-                            linesearch=true, α=1.,
+                            linesearch=false, α=1.0,
                             itmax=100, time_limit=Inf,
                             atol=1e-5, rtol=1e-6,
                             callback=kl_reset)
 
     t = t_vec[1]
-    # t = 4.749350253782536
 
     verbose ? begin println("#################################\nOuter solve\n#################################"); display(outer_stats) end : nothing
 
     # Final solve at optimal t
-    println("#################################\nFinal solve at t=$t...\n#################################")
+    verbose ? println("#################################\nFinal solve at t=$t...\n#################################") : nothing
     
     kl_reset()
     scale!(kl, t)
@@ -202,7 +222,8 @@ function solve!(
         logging=verbose
     )
 
-    # kl_reset()
+    kl.c .= c_
+    kl.λ = λ_
 
     stats = ExecutionStats(
         outer_stats.converged && inner_stats.converged,
