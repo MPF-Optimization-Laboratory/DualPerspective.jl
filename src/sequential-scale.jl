@@ -86,6 +86,22 @@ function value_f(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
     return f
 end
 
+function value_g(kl::DPModel{T}, t; kwargs...) where T
+    scale!(kl, t)
+    solve!(kl; reset_counters=false, kwargs...)
+
+    @unpack λ, A = kl
+
+    y = kl.y0
+
+    #Dual objective value
+    f = -dObj!(kl, y)
+    
+    dt = -lseatyc!(kl, kl.y0) + log(t) + 1
+
+    return dt
+end
+
 function value_fg!(kl::DPModel{T}, dt, t; kwargs...) where T
     f = value_f(kl, t; kwargs...)
     
@@ -187,12 +203,20 @@ function solve!(
         homotopy = ϵ_homotopy
     end
 
-    kl_reset() = begin kl.y0 .= zero(T); homotopy(); return false end
-
     #Find optimal scale
 
+    #Using Roots.jl
+    # g(t) = begin println(t); kl.y0 .= zero(T); return value_g(kl, t; atol=1e-4, rtol=1e-4, kwargs...) end
+
+    # t_min = norm(kl.b)/norm(kl.A)
+    # t_max = 4.2
+    # # println(g(t_min))
+    # # println(g(t_max))
+    # t = find_zero(g, (t_min, t_max), Bisection(); xatol=1e-3, xrtol=1e-4, verbose=verbose)
+
     #Using custom Newton solve
-    t_vec = [t]
+    t_vec = [norm(kl.b)/norm(kl.A)]
+    kl_reset() = begin kl.y0 .= zero(T); homotopy(); verbose ? println("Current scale value: ", t_vec[1]) : nothing; return false end
 
     f(t) = value_f(kl, t; atol=1e-4, rtol=1e-4, kwargs...)
     fg!(dt, t) = value_fg!(kl, dt, t; atol=1e-4, rtol=1e-4, kwargs...) 
@@ -206,12 +230,13 @@ function solve!(
 
     t = t_vec[1]
 
+    #Display outer solve statistics
     verbose ? begin println("#################################\nOuter solve\n#################################"); display(outer_stats) end : nothing
 
-    # Final solve at optimal t
+    #Final solve at optimal t
     verbose ? println("#################################\nFinal solve at t=$t...\n#################################") : nothing
     
-    kl_reset()
+    kl.y0 .= zero(T)
     scale!(kl, t)
 
     inner_stats, primal_solution = solve!(
@@ -241,5 +266,21 @@ function solve!(
         tracer                           # tracer to store iteration info
     )
 
-    return stats, inner_stats
+    # stats = ExecutionStats(
+    #     true && inner_stats.converged,
+    #     time() - start_time,             # elapsed time
+    #     10,          # number of iterations
+    #     neval_jprod(kl),                 # number of products with A
+    #     neval_jtprod(kl),                # number of products with A'
+    #     pObj!(kl, primal_solution),      # primal objective
+    #     dObj!(kl, kl.y0),                # dual objective
+    #     t,                               # optimal scale
+    #     primal_solution,                 # primal solution `x`
+    #     (kl.λ).*(kl.y0),                 # residual r = λy
+    #     inner_stats.g_seq[end],          # norm of gradient of the dual solve 'y'
+    #     0.,          # norm of gradient of the scale solve 't'
+    #     tracer                           # tracer to store iteration info
+    # )
+
+    return stats, inner_stats#, outer_stats
 end

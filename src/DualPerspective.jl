@@ -4,7 +4,7 @@ using LinearAlgebra
 using Printf
 using UnPack
 using DataFrames
-import Roots
+import Roots: find_zero, Bisection
 using NLPModels
 using LinearOperators
 using SolverCore
