@@ -273,17 +273,17 @@ function solve!(
 
     # if !iszero(c) kl.c .= c; kl.λ = λ end
 
-    # stats = optimize!(kl.y0, f, fg!, H, :newton;
+    # stats = optimize!(kl.y0, f, fg!, H, Val(:newton);
     #                     itmax=max_iter,
     #                     time_limit=Float64(max_time),
     #                     atol=atol,
-    #                     rtol=rtol, M=0., linesearch=true, posdef=true)
+    #                     rtol=rtol, M=0., linesearch=nothing, posdef=true)
 
-    # stats = optimize!(kl.y0, f, fg!, H, :rsfn;
+    # stats = optimize!(kl.y0, f, fg!, H, Val(:rsfn);
     #                     itmax=max_iter,
     #                     time_limit=Float64(max_time),
     #                     atol=1e-4,
-    #                     rtol=1e-3, M=1e-8, linesearch=true)
+    #                     rtol=1e-3, M=1e-8, linesearch=nothing)
 
     # println("Final ϵ: ", ϵ)
 

@@ -1,25 +1,3 @@
-"""
-    value!(kl::DPModel, t; kwargs...)
-
-Compute the dual objective of a Perspectron model with respect to the scaling parameter `t`.
-"""
-function value!(kl::DPModel{T}, t; kwargs...) where T
-    t = max(t, eps(T))
-    @unpack λ, A = kl
-    scale!(kl, t)
-    s = solve!(kl; reset_counters=false, kwargs...)
-    v = -s.dual_obj
-    
-    # Compute derivative of value function
-    y = s.residual/λ
-    dv = -lseatyc!(kl, y) + log(τ) + 1
-    
-    # Set starting point for next iteration
-    update_y0!(kl, y)
-    
-    return v, dv
-end
-
 function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
     println(t)
     println(f)
@@ -27,8 +5,6 @@ function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
     if !isnothing(f)
         scale!(kl, t[1])
         solve!(kl; kwargs...)
-
-        @unpack λ, A = kl
         
         # Update product counts
         prods[1] += neval_jprod(kl)
@@ -51,6 +27,8 @@ function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
 
     #Hessian
     if !isnothing(hv)
+        @unpack λ, A = kl
+
         b = A*grad(kl.lse)
 
         hv!(res, z) = dHess_prod!(kl, z, res)
@@ -72,8 +50,6 @@ function value_f(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
     scale!(kl, t[1])
     solve!(kl; reset_counters=false, kwargs...)
 
-    @unpack λ, A = kl
-
     y = kl.y0
 
     #Dual objective value
@@ -85,8 +61,6 @@ end
 function value_g(kl::DPModel{T}, t; kwargs...) where T
     scale!(kl, t)
     solve!(kl; reset_counters=false, kwargs...)
-
-    @unpack λ, A = kl
 
     y = kl.y0
 
@@ -120,6 +94,10 @@ function value_H(kl::DPModel{T}, t; kwargs...) where T
     hv = zeros(1,1)
 
     hv[1,1] = 1/t[1] + b'*ω
+    
+    # hv[1,1] = 1/t[1] + norm(b)^2/λ
+
+    println("Hessian norm: ", norm(hv))
 
     return LinearOperator(hv)
 end
@@ -189,7 +167,7 @@ function solve!(
 
         function ϵ_homotopy()
             α = 2
-            if true && ϵ>1e-8
+            if false && ϵ>1e-8
                 kl.c ./= α
                 kl.λ /= α
                 ϵ /= α
@@ -204,33 +182,31 @@ function solve!(
     #Using Roots.jl
     # g(t) = begin println(t); kl.y0 .= zero(T); return value_g(kl, t; atol=1e-4, rtol=1e-4, kwargs...) end
 
-    function dv!(t)
-        _, dv = value!(kl, t; atol=1e-4, rtol=1e-4, kwargs...)
-        return dv
-    end
-
-    t_min = norm(kl.b)/norm(kl.A)
-    t_max = 1e6
-    # println(g(t_min))
-    # println(g(t_max))
-    # t = find_zero(g, (t_min, t_max), Bisection(); xatol=1e-3, xrtol=1e-4, verbose=verbose)
-    t = find_zero(dv!, t_min; xatol=1e-3, xrtol=1e-4, verbose=verbose)
+    # t_min = norm(kl.b)/norm(kl.A)
+    # t_max = 1e6
+    # # println(g(t_min))
+    # # println(g(t_max))
+    # # t = find_zero(g, (t_min, t_max), Bisection(); xatol=1e-3, xrtol=1e-4, verbose=verbose)
+    # t = find_zero(g, t_min; atol=1e-1, rtol=1e-1, verbose=verbose)
 
     #Using custom Newton solve
-    # t_vec = [norm(kl.b)/norm(kl.A)]
-    # kl_reset() = begin kl.y0 .= zero(T); homotopy(); verbose ? println("Current scale value: ", t_vec[1]) : nothing; return false end
+    t_vec = [norm(kl.b)/norm(kl.A)]
+    kl_reset() = begin kl.y0 .= zero(T); homotopy(); verbose ? println("Current scale value: ", t_vec[1]) : nothing; return false end
 
-    # f(t) = value_f(kl, t; atol=1e-4, rtol=1e-4, kwargs...)
-    # fg!(dt, t) = value_fg!(kl, dt, t; atol=1e-4, rtol=1e-4, kwargs...) 
-    # H(t) = value_H(kl, t; atol=1e-4, rtol=1e-4, kwargs...)
+    atol_ = 1e-4
+    rtol_ = 1e-4
 
-    # outer_stats = newton!(t_vec, f, fg!, H;
-    #                         linesearch=false, α=1.0,
-    #                         itmax=100, time_limit=Inf,
-    #                         atol=1e-5, rtol=1e-6,
-    #                         callback=kl_reset)
+    f(t) = value_f(kl, t; atol=atol_, rtol=rtol_, kwargs...)
+    fg!(dt, t) = value_fg!(kl, dt, t; atol=atol_, rtol=rtol_, kwargs...) 
+    H(t) = value_H(kl, t; atol=atol_, rtol=rtol_, kwargs...)
 
-    # t = t_vec[1]
+    outer_stats = newton!(t_vec, f, fg!, H;
+                            linesearch=false, α=1.0,
+                            itmax=100, time_limit=Inf,
+                            atol=1e-5, rtol=1e-6,
+                            callback=kl_reset)
+
+    t = t_vec[1]
 
     #Display outer solve statistics
     verbose ? begin println("#################################\nOuter solve\n#################################"); display(outer_stats) end : nothing
@@ -284,5 +260,5 @@ function solve!(
     #     tracer                           # tracer to store iteration info
     # )
 
-    return stats, inner_stats#, outer_stats
+    return stats, inner_stats, outer_stats
 end
