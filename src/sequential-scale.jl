@@ -46,7 +46,7 @@ function value!(kl::DPModel{T}, f, dv, hv, t; prods=[0,0], kwargs...) where T
     return f
 end
 
-function value_f(kl::DPModel{T}, t; prods=[0,0], kwargs...) where T
+function value_f(kl::DPModel{T}, t; kwargs...) where T
     scale!(kl, t[1])
     solve!(kl; reset_counters=false, kwargs...)
 
@@ -95,10 +95,6 @@ function value_H(kl::DPModel{T}, t; kwargs...) where T
 
     hv[1,1] = 1/t[1] + b'*ω
     
-    # hv[1,1] = 1/t[1] + norm(b)^2/λ
-
-    println("Hessian norm: ", norm(hv))
-
     return LinearOperator(hv)
 end
 
