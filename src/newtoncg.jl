@@ -197,7 +197,7 @@ end
 function solve!(
     kl::DPModel{T};
     max_time::Real=60,
-    reset_counters=true,
+    reset_counters=false,
     atol::T=DEFAULT_PRECISION(T),
     rtol::T=DEFAULT_PRECISION(T),
     max_iter::Int=typemax(Int)-1,

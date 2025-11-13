@@ -85,6 +85,8 @@ function value_H(kl::DPModel{T}, t; kwargs...) where T
     
     b = A*grad(kl.lse)
 
+    increment!(kl, :neval_jprod)
+
     hv!(res, z) = dHess_prod!(kl, z, res)
     m = size(A,1)
     H = LinearOperator(T, m, m, true, true, hv!)
