@@ -7,26 +7,40 @@ on:
   pull_request:
     branches:
       - main
+  # Manifest.toml is gitignored, so every CI run resolves dependencies afresh. The weekly
+  # run turns that into an early-warning system: when an upstream release breaks us (as
+  # SolverCore 0.3.9 did by forking the `reset!` binding), CI goes red that week instead of
+  # months later in a user's traceback.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1.10', '1.11', '1.12']
+        os: [ubuntu-latest]
 
     steps:
-      # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up Julia
       - name: Set up Julia
-        uses: julia-actions/setup-julia@v2.6.0
+        uses: julia-actions/setup-julia@v2
         with:
-          version: '1.11'
+          version: ${{ matrix.julia-version }}
 
-      # Install dependencies
+      - uses: julia-actions/cache@v2
+
       - name: Install dependencies
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
-      # Run the tests
+      - name: Report resolved versions
+        run: julia --project=. -e 'using Pkg; Pkg.status()'
+
       - name: Run tests
         run: julia --project=. -e 'using Pkg; Pkg.test()'
