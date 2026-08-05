@@ -36,6 +36,18 @@ end
         @test stats.status in (:optimal, :max_iter)
     end
 
+    # LevelSet used to drop the caller's atol/rtol on the floor (they never reached the
+    # final solve), so it always converged to the package default instead. Assert the
+    # documented contract: the final gradient norm must meet atol + rtol*‖b‖.
+    @testset "LevelSet honours atol/rtol" begin
+        kl = mk()
+        tol = 1e-9
+        stats = solve_quietly() do
+            DualPerspective.solve!(kl, LevelSet(); t=sum(kl.q), atol=tol, rtol=tol)
+        end
+        @test stats.optimality < tol + tol * kl.bNrm
+    end
+
     @testset "AdaptiveLevelSet" begin
         kl = mk()
         stats = solve_quietly() do

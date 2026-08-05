@@ -52,8 +52,12 @@ end
     # Create and solve the KL problem
     kl = DPModel(A, b, C=C, c=zeros(n), q=q, λ=λ)
     σ = -solve!(kl, SequentialSolve()).dual_obj # Find the optimal objective value
-    sP = solve!(kl, LevelSet(), α=1.5, σ=σ, atol=1e-5, rtol = 1e-5)
-    @test sP.optimality < 1e-5*kl.bNrm
+    atol = rtol = 1e-5
+    sP = solve!(kl, LevelSet(), α=1.5, σ=σ, atol=atol, rtol=rtol)
+    # The solver's stopping rule is ‖∇d‖ < atol + rtol*‖b‖ (newtoncg.jl:212). The bound here
+    # used to omit the atol term; it passed only because LevelSet was discarding the
+    # requested tolerances and converging tighter than asked.
+    @test sP.optimality < atol + rtol * kl.bNrm
 end
 
 @testset "Adaptive Level Set Method for DPModel with synthetic kl" begin

@@ -74,8 +74,8 @@ function solve!(
         kl;
         logging=subsolver_logging,
         reset_counters=false,
-        # atol=atol,
-        # rtol=rtol,
+        atol=atol,
+        rtol=rtol,
         solver=solver,
         kwargs...
     )
