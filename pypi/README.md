@@ -2,6 +2,11 @@
 
 Python interface for [DualPerspective.jl](https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl), a Julia package for solving large-scale KL divergence problems.
 
+> **Seeing `juliacall.JuliaError: UndefVarError: reset! not defined`?** This affects every
+> Julia release up to v0.1.4 and is fixed in v0.1.5. See
+> [UPGRADING.md](https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl/blob/main/UPGRADING.md)
+> for a workaround that needs no upgrade, and for upgrade instructions.
+
 ## Installation
 
 ```bash
