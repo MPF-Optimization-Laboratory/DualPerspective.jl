@@ -8,8 +8,11 @@ import Roots
 using JSOSolvers: trunk, TrunkSolver
 using NLPModels
 using LinearOperators
-using SolverCore
-using Pkg
+# `reset!` is owned by LinearOperators and extended/re-exported by NLPModels. SolverCore
+# 0.3.9 forked off its own `reset!`, so `using SolverCore` would make the bare name
+# ambiguous here. Every SolverCore call below is qualified, so a plain `import` suffices.
+import NLPModels: reset!
+import SolverCore
 
 export DPModel, SSModel, OTModel, LPModel
 export SSTrunkLS, SequentialSolve, LevelSet, AdaptiveLevelSet
