@@ -1,5 +1,13 @@
 using Test
 
+@testset "test-binding-hygiene" begin
+    include("test-binding-hygiene.jl")
+end
+
+@testset "test-callback-logging" begin
+    include("test-callback-logging.jl")
+end
+
 @testset "test-logsumexp" begin
     include("test-logexp.jl")
 end
