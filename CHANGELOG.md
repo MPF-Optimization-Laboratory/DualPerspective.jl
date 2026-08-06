@@ -15,6 +15,10 @@
 - Keyword forwarding in `LevelSet` and `AdaptiveLevelSet`: `kwargs...` was splatted without a
   preceding semicolon, so it expanded into positional arguments. Passing any keyword the
   method did not name by hand (such as `trace`) raised a `MethodError`.
+- `LevelSet` silently ignored the caller's `atol` and `rtol`, always converging to the
+  package default `eps^(1/3)*(1 + ‖b‖)` instead. `AdaptiveLevelSet` was unaffected. **Results
+  from `LevelSet` will change**: it now stops when `‖∇d‖ < atol + rtol*‖b‖`, as documented,
+  which is looser than the old default for large tolerances and tighter for small ones.
 
 ### Changed
 - Requires JSOSolvers 0.14.1 or later and Krylov 0.10.1 or later. JSOSolvers 0.12.x can no
