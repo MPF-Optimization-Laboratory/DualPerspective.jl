@@ -4,34 +4,44 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DualPerspective"
-version = "0.1.4"
+version = "0.2.0"
 authors = [
     { name = "Michael P. Friedlander", email = "michael.friedlander@ubc.ca" },
 ]
 description = "Python interface for DualPerspective.jl - A Julia package for obtaining maximum-entropy solutions to underdetermined linear systems."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "juliacall>=0.9.7",
-    "numpy>=1.20.0",
-    "tomli>=2.0.0;python_version<'3.11'",
+    "juliacall>=0.9.20",
+    "juliapkg>=0.1.10",
+    "numpy>=1.22.0",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl"
 "Bug Tracker" = "https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl/issues"
+"Upgrading" = "https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl/blob/main/UPGRADING.md"
 
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0",
 ]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# juliapkg.json is what pins the Julia dependency. If it is missing from the wheel,
+# juliacall falls back to resolving whatever it likes -- the failure mode this package
+# exists to prevent. tests/test_bootstrap.py asserts it is present.
+[tool.setuptools.package-data]
+DualPerspective = ["juliapkg.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v" 
+addopts = "-v"
