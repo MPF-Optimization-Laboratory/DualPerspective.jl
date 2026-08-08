@@ -235,10 +235,13 @@ function callback(
     elseif tired
         trunk_stats.status = :max_iter
     end
-    if trunk_stats.status == :unkown
-        return
-    end
-    
+    # NOTE: there used to be an early `return` here guarded by `status == :unkown` -- a
+    # misspelling of `:unknown`, so the branch never fired and the preconditioner was
+    # updated on every callback. That is the behaviour we want: `DiagASAPreconditioner`
+    # tracks `grad(kl.lse)`, which changes each iteration. Correcting the spelling would
+    # have restricted updates to the final callback, quietly degrading it. Removed rather
+    # than "fixed" so the trap does not get re-armed.
+
     # Update the preconditioner
     update!(M)
 end

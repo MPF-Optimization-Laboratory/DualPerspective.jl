@@ -181,7 +181,6 @@ function callback(
     elseif tired
         trunk_stats.status = :max_iter
     end
-    if trunk_stats.status == :unkown
-        return
-    end
+    # A `status == :unkown` guard used to sit here. Besides misspelling `:unknown`, it was
+    # the last statement in the callback, so returning early did nothing at all.
 end
