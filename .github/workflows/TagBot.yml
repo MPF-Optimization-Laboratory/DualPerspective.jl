@@ -28,5 +28,9 @@ jobs:
       - uses: JuliaRegistries/TagBot@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Tag pushes made with GITHUB_TOKEN do not trigger other workflows, so without
+          # this the `tags: '*'` trigger in docs.yml never fires and versioned docs are
+          # never published. Pushing the tag over SSH instead does trigger it.
+          ssh: ${{ secrets.DOCUMENTER_KEY }}
           # Edit the following line to reflect your package registry:
-          registry: JuliaRegistries/General 
+          registry: JuliaRegistries/General
