@@ -53,7 +53,7 @@ function DualPerspective.solve!(
     trace::Bool = false,
     kwargs...) where T
     
-    reset!(ss) # reset counters
+    NLPModels.reset!(ss) # reset counters
     kl = ss.kl
     m = kl.meta.nvar
 

@@ -71,11 +71,11 @@ function solve!(
     end
 
     final_soln = solve!(
-        kl,
+        kl;
         logging=subsolver_logging,
         reset_counters=false,
-        # atol=atol,
-        # rtol=rtol,
+        atol=atol,
+        rtol=rtol,
         solver=solver,
         kwargs...
     )
@@ -233,7 +233,7 @@ function solve!(
     end
 
     final_soln = solve!(
-        kl,
+        kl;
         logging=subsolver_logging,
         reset_counters=false,
         atol=atol,
@@ -313,8 +313,8 @@ function oracle_callback(
     r = trunk_stats.dual_feas # = ||∇ dual obj(x)||
     Δ = solver.tr.radius
     actual_to_predicted = solver.tr.ratio
-    cgits = solver.subsolver.stats.niter
-    cgexit = get(cg_msg, solver.subsolver.stats.status, "default")
+    cgits = solver.krylov_subsolver.stats.niter
+    cgexit = get(cg_msg, solver.krylov_subsolver.stats.status, "default")
     ε = atol + rtol * kl.bNrm
     pObj = pObj!(kl, x) - σ
 

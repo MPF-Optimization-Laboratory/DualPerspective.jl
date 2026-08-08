@@ -5,6 +5,10 @@
 
 # DualPerspective
 
+> **Hitting `UndefVarError: reset! not defined`?** This affects every release up to v0.1.4
+> and is fixed in v0.1.5. See [UPGRADING.md](UPGRADING.md) for a workaround that needs no
+> upgrade, and for upgrade instructions.
+
 This package provides an algorithm for solving Kullback-Leibler (KL) regularized least squares problems of the form
 
 $$

@@ -151,8 +151,8 @@ function callback(
     scale = solver.x[end]
     Δ = solver.tr.radius 
     actual_to_predicted = solver.tr.ratio
-    cgits = solver.subsolver.stats.niter
-    cgexit = get(cg_msg, solver.subsolver.stats.status, "default")
+    cgits = solver.krylov_subsolver.stats.niter
+    cgexit = get(cg_msg, solver.krylov_subsolver.stats.status, "default")
     ε = atol + rtol * ss.kl.bNrm
     
     # Test exit conditions
@@ -181,7 +181,6 @@ function callback(
     elseif tired
         trunk_stats.status = :max_iter
     end
-    if trunk_stats.status == :unkown
-        return
-    end
+    # A `status == :unkown` guard used to sit here. Besides misspelling `:unknown`, it was
+    # the last statement in the callback, so returning early did nothing at all.
 end

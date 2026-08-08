@@ -34,3 +34,8 @@ memory-bank/**
 docs/build/
 scratch/
 notes/
+
+# Python build artefacts (stale ones would be re-uploaded by `twine upload dist/*`)
+pypi/dist/
+pypi/build/
+pypi/src/*.egg-info/
