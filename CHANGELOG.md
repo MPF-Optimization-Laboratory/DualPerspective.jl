@@ -28,6 +28,11 @@
 
 ### Removed
 - The unused `Pkg` dependency.
+- Two dead status guards in the solver callbacks. Both compared against `:unkown`, a
+  misspelling of `:unknown`, so neither ever fired. Behaviour is unchanged — but note that
+  *correcting* the spelling would not have been: in `newtoncg.jl` the guard sat in front of
+  the preconditioner update, so fixing it would have restricted `update!` to the final
+  callback and quietly degraded `DiagASAPreconditioner`.
 
 ## [0.1.4] - 2025-04-03
 
