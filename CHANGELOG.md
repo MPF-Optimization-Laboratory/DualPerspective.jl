@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6] - 2026-08-08
+
+### Fixed
+- `SequentialSolve` reported `status = :unknown` for essentially every successful solve. The
+  status was derived from the root finder's `:x_converged` flag alone, but `Roots` reports
+  `:f_converged` in most cases (and also `:exact_zero` / `:converged`). The status now
+  defers to the inner trust-region solve, which tests the criterion that actually governs
+  the returned solution, `‖∇d(y)‖ < atol + rtol‖b‖`, and reports `:stalled` when the root
+  find genuinely fails.
+- Infeasibility detection for `LPModel`. It relabels a solve as `:infeasible` only when the
+  status is `:optimal` and the residual is large, so the bug above meant it could never
+  fire. This was previously marked as a known-broken test.
+
 ## [0.1.5] - 2026-08-05
 
 ### Fixed

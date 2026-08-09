@@ -1,7 +1,7 @@
 name = "DualPerspective"
 uuid = "a1edf54d-33cf-4bd3-8f57-70bdaf668f08"
 authors = ["Michael P. Friedlander <michael.friedlander@ubc.ca> and contributors"]
-version = "0.1.5"
+version = "0.1.6"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
