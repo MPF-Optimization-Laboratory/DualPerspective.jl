@@ -1,12 +1,13 @@
-# DualPerspective Python Package
+# DualPerspective
 
-Python interface for [DualPerspective.jl](https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl),
-a Julia package for solving Kullback-Leibler regularized least squares problems.
+Maximum-entropy solutions to underdetermined linear systems, from Python.
 
-> **Seeing `juliacall.JuliaError: UndefVarError: reset! not defined`?** This affects every
-> Julia release up to v0.1.4 and is fixed in v0.1.5. See
-> [UPGRADING.md](https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl/blob/main/UPGRADING.md)
-> for a workaround that needs no upgrade, and for upgrade instructions.
+Given a wide matrix `A` and measurements `b`, `Ax = b` has infinitely many solutions.
+DualPerspective picks the nonnegative one closest — in Kullback-Leibler divergence — to a
+prior `q`, while fitting the data to within a tolerance set by a regularization parameter.
+It is a Python interface to
+[DualPerspective.jl](https://github.com/MPF-Optimization-Laboratory/DualPerspective.jl),
+which solves the dual problem with Newton-type methods.
 
 ## Installation
 
@@ -15,19 +16,8 @@ pip install DualPerspective
 ```
 
 Julia itself is installed automatically on first use, via
-[juliacall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/).
-
-### Versioning
-
-The PyPI package and the Julia package version independently. Each wheel pins one exact
-Julia release in `juliapkg.json` and is tested against it, so PyPI **0.2.0** shipping
-DualPerspective.jl **0.1.5** is expected, not a mismatch.
-
-```python
-import DualPerspective
-DualPerspective.__version__   # the Python package
-DualPerspective.version()     # the Julia package it pins
-```
+[juliacall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/). Nothing happens at
+import time; Julia starts lazily, on the first call that needs it.
 
 ## Basic usage
 
@@ -37,7 +27,8 @@ from DualPerspective import DPModel, solve
 
 np.random.seed(42)
 n, m = 200, 100                     # solution dimension, number of measurements
-x0 = np.pi * (tmp := np.random.rand(n)) / np.sum(tmp)
+tmp = np.random.rand(n)
+x0 = np.pi * tmp / tmp.sum()        # a nonnegative signal of total mass π
 A = np.random.rand(m, n)
 b = A @ x0                          # measurements
 
@@ -47,18 +38,27 @@ x = solve(model)
 print(f"sum of solution: {x.sum():.6f} (should be about {np.pi:.6f})")
 ```
 
+The default solver estimates the total mass from the data rather than taking it as given,
+so the recovered solution sums to roughly π even though the prior sums to 1 — that is what
+the printed check tests.
+
 `solve` returns a NumPy array. Pass `full_output=True` for the full result:
 
 ```python
 result = solve(model, full_output=True)
-result.x            # primal solution
-result.status       # 'optimal', 'max_iter', ...
+result.x              # primal solution
+result.status         # 'optimal', 'max_iter', ...
 result.iterations
-result.optimality   # final ‖∇d(y)‖, the quantity the stopping rule tests
-result.residual
-result.trace        # per-iteration history (a list of dicts), when the solver records one
-result.to_pandas()  # the trace as a DataFrame, if pandas is installed
+result.elapsed_time
+result.optimality     # final ‖∇d(y)‖, the quantity the stopping rule tests
+result.residual       # covariance-weighted residual
+result.primal_obj, result.dual_obj
+result.trace          # per-iteration history (a list of dicts), when the solver records one
+result.to_pandas()    # the trace as a DataFrame, if pandas is installed
 ```
+
+`model.solve(...)` is equivalent to `solve(model, ...)`. For a quick experiment,
+`rand_dp_model(m, n)` builds a random model.
 
 ## The model
 
@@ -66,34 +66,33 @@ result.to_pandas()  # the trace as a DataFrame, if pandas is installed
 DPModel(A, b, q=None, C=None, c=None, lam=None)
 ```
 
-Minimizes `(1/2λ)‖Ax - b‖²_{C⁻¹} + ⟨c, x⟩ + KL(x ‖ q)`.
+Minimizes `(1/2λ)‖Ax - b‖²_{C⁻¹} + ⟨c, x⟩ + KL(x ‖ q)` over nonnegative `x` of a given
+total mass — the probability simplex when that mass is 1.
 
-| Argument | Shape | Meaning |
-| --- | --- | --- |
-| `A` | `(m, n)` | Forward operator |
-| `b` | `(m,)` | Measurements |
-| `q` | `(n,)` | Prior; defaults to uniform |
-| `C` | **`(m, m)`** | Covariance weighting the residual; defaults to the identity |
-| `c` | `(n,)` | Linear cost |
-| `lam` | scalar | Regularization parameter (also accepted as `λ`) |
-
-> `C` weights the residual `b - Ax`, so it is `(m, m)`. Releases before 0.2.0 documented it
-> incorrectly as `(n, n)`.
+| Argument | Shape | Meaning | Default |
+| --- | --- | --- | --- |
+| `A` | `(m, n)` | Forward operator | — |
+| `b` | `(m,)` | Measurements | — |
+| `q` | `(n,)` | Prior | uniform, summing to 1 |
+| `C` | `(m, m)` | Covariance weighting the residual `b - Ax` | identity |
+| `c` | `(n,)` | Linear cost | all `-1` |
+| `lam` | scalar | Regularization parameter (also accepted as `λ`) | `√eps` |
 
 Integer and single-precision arrays are accepted and converted to double precision. All
 arrays are copied into Julia, so mutating them afterwards does not change the model.
 
-`lam` and `scale` are settable properties:
+`lam` and `scale` are settable properties. `scale` is the total mass of the solution:
 
 ```python
-model.lam = 1e-4      # same as regularize(model, 1e-4)
-model.scale = 2.0     # same as scale(model, 2.0)
+model.lam = 1e-4      # regularization parameter
+model.scale = 2.0     # total mass
 ```
 
 ## Choosing a solver
 
 ```python
-solve(model, method="sequential", atol=1e-6, rtol=1e-6, logging=0, full_output=False)
+solve(model, method="sequential", atol=1e-6, rtol=1e-6,
+      t=None, verbose=False, logging=0, full_output=False)
 ```
 
 | `method` | Algorithm |
@@ -104,8 +103,24 @@ solve(model, method="sequential", atol=1e-6, rtol=1e-6, logging=0, full_output=F
 | `"adaptive-level-set"` | Adaptive level-set method |
 | `"self-scaled"` | Self-scaled Gauss-Newton, for unknown total mass |
 
-The solver stops when `‖∇d(y)‖ < atol + rtol*‖b‖`. Unrecognized keywords are passed straight
-through to the Julia solver.
+The solver stops when `‖∇d(y)‖ < atol + rtol*‖b‖`.
+
+- `t` sets the total mass and defaults to `sum(q)`. The `"trust-region"` and
+  `"self-scaled"` methods determine the mass themselves and reject it.
+- `verbose` prints root-finding progress (`"sequential"` only); `logging` sets solver log
+  verbosity, `0` being silent.
+- Unrecognized keywords are passed straight through to the Julia solver.
+
+## Versioning
+
+The PyPI package and the Julia package version independently: each wheel pins one exact
+Julia release and is tested against it, so the two version numbers differ by design.
+
+```python
+import DualPerspective
+DualPerspective.__version__   # the Python package
+DualPerspective.version()     # the Julia package it pins
+```
 
 ## Diagnosing problems
 
@@ -136,30 +151,6 @@ chained as `__cause__`.
   Julia's garbage collector in multi-threaded programs, but interferes with Python's own
   signal handling (including Ctrl-C). It is not set by default; enable it only if you need
   it.
-
-## Local development
-
-To run against a checkout of DualPerspective.jl rather than the pinned release:
-
-```bash
-export DUALPERSPECTIVE_JL_PATH=/path/to/DualPerspective.jl
-```
-
-## Building and publishing
-
-Remove stale artefacts first — `twine upload dist/*` will otherwise try to re-upload every
-old build sitting in `dist/`:
-
-```bash
-cd pypi
-rm -rf build dist *.egg-info
-python -m build
-unzip -l dist/*.whl | grep juliapkg.json    # the pin must be in the wheel
-twine check dist/*
-```
-
-Publish only **after** the pinned Julia version has been registered in the General registry;
-otherwise the wheel pins a version that cannot be resolved.
 
 ## License
 
