@@ -28,6 +28,30 @@ function value!(kl::DPModel{T}, τ; prods=[0, 0], kwargs...) where T
 end
 
 struct SequentialSolve end
+
+"""
+Root-finder outcomes that count as success. `Roots` distinguishes several: `:x_converged`
+when the bracket on `t` is tight enough, `:f_converged` when the residual is small,
+`:exact_zero` on a hit, and the generic `:converged`. Recognizing only `:x_converged`
+reported almost every successful solve as `:unknown`.
+"""
+const ROOTS_CONVERGED = (:x_converged, :f_converged, :exact_zero, :converged)
+
+"""
+    _sequential_status(tracker, final_run_stats) -> Symbol
+
+Termination status for a sequential-scale solve.
+
+The scale `t` is located by root finding and the solution is then produced by an inner
+trust-region solve. Report failure if the root find did not converge; otherwise defer to
+the inner solve, which tests the criterion that actually governs the returned solution,
+`‖∇d(y)‖ < atol + rtol‖b‖`.
+"""
+function _sequential_status(tracker, final_run_stats)
+    tracker.convergence_flag in ROOTS_CONVERGED || return :stalled
+    return final_run_stats.status
+end
+
 """
     solve!(kl::DPModel, ::SequentialSolve; kwargs...) -> ExecutionStats
 
@@ -106,7 +130,7 @@ function solve!(
     )
 
     stats = ExecutionStats(
-        tracker.convergence_flag == :x_converged ? :optimal : :unknown,
+        _sequential_status(tracker, final_run_stats),
         time() - start_time,                  # elapsed time
         tracker.steps,                 # number of iterations
         prods[1],                      # number of products with A

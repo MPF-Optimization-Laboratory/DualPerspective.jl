@@ -66,7 +66,10 @@ end
 
     lp = DualPerspective.LPModel(A, b, c, ε=5e-1, λ=5e-1)
     stats = solve!(lp)
-    @test_broken stats.status == :infeasible
+    # Was `@test_broken`: LPModel only relabels to `:infeasible` when the solve reports
+    # `:optimal` (linear-programming.jl:120), and SequentialSolve used to report
+    # `:unknown` for essentially every solve, so the check could never fire.
+    @test stats.status == :infeasible
 
     # model = Model(GLPK.Optimizer)
 
